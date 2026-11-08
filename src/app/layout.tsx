@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { LABELS, type Role } from "@/lib/data";
 import { signOut } from "./login/actions";
+import { Sidebar } from "@/components/sidebar";
 
 export const metadata: Metadata = {
   title: "Beacon Operations",
   description: "Projects, purchasing and site tasks for Beacon",
 };
 
-const NAV: { href: string; label: string; roles: Role[] }[] = [
-  { href: "/", label: "Overview", roles: ["management", "site_ops", "procurement", "accountant", "client", "consultant"] },
-  { href: "/projects", label: "Projects", roles: ["management", "site_ops", "procurement", "accountant", "client", "consultant"] },
-  { href: "/site-tasks", label: "Site tasks", roles: ["management", "site_ops"] },
-  { href: "/purchasing", label: "Purchasing", roles: ["management", "site_ops", "procurement", "accountant"] },
-  { href: "/people", label: "People", roles: ["management", "procurement"] },
+const NAV: { href: string; label: string; icon: string; roles: Role[] }[] = [
+  { href: "/", label: "Overview", icon: "home", roles: ["management", "site_ops", "procurement", "accountant", "client", "consultant"] },
+  { href: "/projects", label: "Projects", icon: "folder", roles: ["management", "site_ops", "procurement", "accountant", "client", "consultant"] },
+  { href: "/site-tasks", label: "Site tasks", icon: "check", roles: ["management", "site_ops"] },
+  { href: "/purchasing", label: "Purchasing", icon: "cart", roles: ["management", "site_ops", "procurement", "accountant"] },
+  { href: "/people", label: "People", icon: "people", roles: ["management", "procurement"] },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,25 +29,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
-        {user && (
-          <header className="border-b border-line bg-surface">
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-              <Link href="/" className="font-semibold tracking-tight">Beacon Operations</Link>
-              <nav className="flex flex-wrap gap-4 text-sm">
-                {role && NAV.filter((n) => n.roles.includes(role)).map((n) => (
-                  <Link key={n.href} href={n.href} className="text-muted hover:text-fg">{n.label}</Link>
-                ))}
-              </nav>
-              <div className="ml-auto flex items-center gap-3 text-sm">
-                <span className="text-muted">
-                  {me?.name ?? user.email}{role ? ` · ${LABELS.role[role]}` : ""}
-                </span>
-                <form action={signOut}><button className="btn btn-sm">Sign out</button></form>
-              </div>
-            </div>
-          </header>
+        {user ? (
+          <>
+            <Sidebar
+              items={role ? NAV.filter((n) => n.roles.includes(role)).map(({ href, label, icon }) => ({ href, label, icon })) : []}
+              name={me?.name ?? user.email ?? ""}
+              roleLabel={role ? LABELS.role[role] : ""}
+              signOut={signOut}
+            />
+            <main className="px-4 py-8 md:ml-60 md:px-8">
+              <div className="mx-auto max-w-6xl">{children}</div>
+            </main>
+          </>
+        ) : (
+          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         )}
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
   );
