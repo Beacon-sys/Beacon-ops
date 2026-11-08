@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #16181d;
+  --muted: #5d6470;
+  --line: #e3e6eb;
+  --brand: #0f5c8c;
+  --brand-fg: #ffffff;
+  --good: #1f7a4d; --good-bg: #e3f4ea;
+  --info: #1d5fa8; --info-bg: #e4eefa;
+  --warn: #8a5a00; --warn-bg: #fbf0d9;
+  --bad: #b3261e;  --bad-bg: #fbe4e2;
+  --neutral: #4b5260; --neutral-bg: #eceef2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115; --surface: #171a20; --fg: #e8eaee; --muted: #9aa1ad; --line: #2a2f38;
+    --brand: #4fa3d9; --brand-fg: #0b1220;
+    --good: #6fd19c; --good-bg: #173226; --info: #8cbcf0; --info-bg: #182a40;
+    --warn: #f0c46a; --warn-bg: #3a2e12; --bad: #f08a82; --bad-bg: #3d1a18;
+    --neutral: #c3c8d1; --neutral-bg: #262a32;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+}
+
+a.link { color: var(--brand); }
+a.link:hover { text-decoration: underline; }
+
+.input {
+  width: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  border-radius: 0.5rem; padding: 0.45rem 0.6rem; font-size: 0.875rem;
+}
+.input:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 0.5rem;
+  padding: 0.45rem 0.85rem; font-size: 0.875rem; font-weight: 500; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); cursor: pointer; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn-primary { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+.btn-primary:hover { opacity: 0.92; }
+.btn-sm { padding: 0.2rem 0.55rem; font-size: 0.78rem; }
+
+.badge { display: inline-block; border-radius: 999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+.badge-good { color: var(--good); background: var(--good-bg); }
+.badge-info { color: var(--info); background: var(--info-bg); }
+.badge-warn { color: var(--warn); background: var(--warn-bg); }
+.badge-bad { color: var(--bad); background: var(--bad-bg); }
+.badge-neutral { color: var(--neutral); background: var(--neutral-bg); }
+
+.bar { height: 6px; border-radius: 999px; background: var(--neutral-bg); overflow: hidden; min-width: 60px; }
+.bar > span { display: block; height: 100%; background: var(--good); }
