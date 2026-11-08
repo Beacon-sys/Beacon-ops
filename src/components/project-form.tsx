@@ -3,7 +3,7 @@ import { Field, Select, PersonSelect } from "@/components/ui";
 
 type P = { id: string; name: string; role: string };
 
-export function ProjectForm({ project, people }: { project?: Record<string, string | number | null>; people: P[] }) {
+export function ProjectForm({ project, people, tendering }: { project?: Record<string, string | number | null>; people: P[]; tendering?: boolean }) {
   const v = (k: string) => (project?.[k] ?? "") as string;
   const of = (...roles: string[]) => people.filter((p) => roles.includes(p.role));
   return (
@@ -15,7 +15,14 @@ export function ProjectForm({ project, people }: { project?: Record<string, stri
       <Field label="Consultant"><PersonSelect name="consultant_id" people={of("consultant")} defaultValue={v("consultant_id")} /></Field>
       <Field label="Project manager"><PersonSelect name="project_manager_id" people={of("management", "site_ops")} defaultValue={v("project_manager_id")} /></Field>
       <Field label="Location"><input name="location" defaultValue={v("location")} className="input" /></Field>
-      <Field label="Status"><Select name="status" set="project_status" defaultValue={v("status") || "tendering"} /></Field>
+      <Field label="Status">
+        {tendering ? (
+          <select name="status" defaultValue={v("status") || "tendering"} className="input">
+            <option value="tendering">Tendering</option>
+            {project && <option value="active">Won: hand over to Operations</option>}
+          </select>
+        ) : <Select name="status" set="project_status" defaultValue={v("status") || "tendering"} />}
+      </Field>
       <Field label="Contract value (EGP)"><input name="contract_value" type="number" step="0.01" defaultValue={v("contract_value")} className="input" /></Field>
       <Field label="Start date"><input name="start_date" type="date" defaultValue={v("start_date")} className="input" /></Field>
       <Field label="Planned finish"><input name="planned_finish" type="date" defaultValue={v("planned_finish")} className="input" /></Field>

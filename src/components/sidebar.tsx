@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-export type NavItem = { href: string; label: string; icon: string };
+export type NavItem = { href: string; label: string; icon: string; group?: string };
 
 const ICONS: Record<string, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
   folder: <path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />,
   check: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="m8 12 3 3 5-6" /></>,
   cart: <><path d="M3 4h2l2.5 11h11L21 7H6.2" /><circle cx="9" cy="19.5" r="1.3" /><circle cx="18" cy="19.5" r="1.3" /></>,
+  doc: <><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4M9 12h6M9 16h6" /></>,
+  coins: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
   people: <><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="9" r="2.5" /><path d="M16 14.2c2.9.4 5 2.8 5 5.8" /></>,
 };
 
@@ -30,12 +32,15 @@ export function Sidebar({ items, name, roleLabel, signOut }: {
 
   const nav = (
     <nav className="flex flex-col gap-1">
-      {items.map((n) => (
-        <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
+      {items.map((n, i) => (<div key={n.href}>
+        {n.group && n.group !== items[i - 1]?.group && (
+          <div className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted first:mt-0">{n.group}</div>
+        )}
+        <Link href={n.href} onClick={() => setOpen(false)}
           className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active(n.href) ? "bg-[var(--info-bg)] font-medium text-[var(--brand)]" : "text-muted hover:bg-[var(--neutral-bg)] hover:text-fg"}`}>
           <Icon name={n.icon} />{n.label}
         </Link>
-      ))}
+      </div>))}
     </nav>
   );
   const footer = (

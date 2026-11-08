@@ -28,7 +28,8 @@ export default async function ProjectPage({ params, searchParams }: {
   const { data: workItems = [] } = await supabase.from("work_item_summary")
     .select("*").eq("project_id", id).order("boq_ref", { nullsFirst: false }).order("name");
 
-  const canEditWork = me.role === "management" || me.role === "site_ops";
+  const tenderOpen = me.role === "tendering" && p.status === "tendering";
+  const canEditWork = me.role === "management" || me.role === "site_ops" || tenderOpen;
   const canRequest = ["management", "site_ops", "procurement"].includes(me.role);
   const showMoney = internal && me.role !== "site_ops";
 
@@ -50,7 +51,7 @@ export default async function ProjectPage({ params, searchParams }: {
       <PageTitle
         title={p.name}
         sub={[p.code, p.location, who(p.client) && `Client: ${who(p.client)}`, who(p.consultant) && `Consultant: ${who(p.consultant)}`, who(p.pm) && `PM: ${who(p.pm)}`].filter(Boolean).join(" · ")}
-        action={me.role === "management" ? <Link className="btn" href={`${back}/edit`}>Edit project</Link> : null}
+        action={me.role === "management" || tenderOpen ? <Link className="btn" href={`${back}/edit`}>Edit project</Link> : null}
       />
       <ErrorNote error={error} />
 

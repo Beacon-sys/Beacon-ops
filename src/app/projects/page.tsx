@@ -12,7 +12,7 @@ export default async function Projects() {
     <>
       <PageTitle
         title="Projects"
-        action={me.role === "management" ? <ButtonLink href="/projects/new">New project</ButtonLink> : null}
+        action={["management", "tendering"].includes(me.role) ? <ButtonLink href="/projects/new">New project</ButtonLink> : null}
       />
       <Card>
         <ProjectList projects={(data ?? []) as ProjectRow[]} showMoney={isInternal(me.role) && me.role !== "site_ops"} />

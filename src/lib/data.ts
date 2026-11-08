@@ -2,12 +2,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export type Role =
-  | "management" | "site_ops" | "procurement" | "accountant"
+  | "management" | "tendering" | "site_ops" | "procurement" | "accountant"
   | "client" | "consultant" | "supplier";
 
 export type Me = { id: string; name: string; email: string | null; role: Role };
 
-export const INTERNAL: Role[] = ["management", "site_ops", "procurement", "accountant"];
+export const INTERNAL: Role[] = ["management", "tendering", "site_ops", "procurement", "accountant"];
 
 export async function getMe() {
   const supabase = await createClient();
@@ -28,8 +28,9 @@ export const isInternal = (r: Role) => INTERNAL.includes(r);
 
 export const LABELS = {
   role: {
-    management: "Management", site_ops: "Site operations", procurement: "Procurement",
-    accountant: "Accountant", client: "Client", consultant: "Consultant", supplier: "Supplier",
+    management: "Management", tendering: "Tendering", accountant: "Accounting",
+    site_ops: "Operations", procurement: "Procurement",
+    client: "Client", consultant: "Consultant", supplier: "Supplier",
   },
   project_status: {
     tendering: "Tendering", active: "Active", on_hold: "On hold",
@@ -86,3 +87,11 @@ export function formRow(fd: FormData, keys: string[]) {
   }
   return row;
 }
+
+/** Each department's home page. */
+export const HOME: Partial<Record<Role, string>> = {
+  management: "/management", tendering: "/tendering", accountant: "/accounting",
+  site_ops: "/operations", procurement: "/procurement",
+};
+
+export const allowed = (role: Role, roles: Role[]) => role === "management" || roles.includes(role);

@@ -9,7 +9,7 @@ export default async function EditProject({ params, searchParams }: {
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const { supabase } = await requireMe();
+  const { supabase, me } = await requireMe();
   const [{ data: project }, { data: people }] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).maybeSingle(),
     supabase.from("people").select("id,name,role").eq("active", true).order("name"),
@@ -19,7 +19,7 @@ export default async function EditProject({ params, searchParams }: {
     <>
       <PageTitle title={`Edit ${project.name}`} />
       <ErrorNote error={error} />
-      <ProjectForm project={project} people={people ?? []} />
+      <ProjectForm project={project} people={people ?? []} tendering={me.role === "tendering"} />
     </>
   );
 }
