@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formRow } from "@/lib/data";
 
 const PROJECT = ["name","code","client_id","consultant_id","project_manager_id","location","status","start_date","planned_finish","contract_value"];
-const WORK_ITEM = ["project_id","name","boq_ref","trade","area","status","responsible_id","planned_start","planned_finish","actual_start","actual_finish","quantity","unit","budget","notes"];
+const WORK_ITEM = ["project_id","name","boq_ref","item_type","category","trade","area","status","planned_start","planned_finish","actual_start","actual_finish","quantity","unit","notes"];
 const PURCHASE = ["project_id","work_item_id","request","needed_by","quantity","unit","supplier_id","notes"];
 const SITE_TASK = ["project_id","work_item_id","task","type","assigned_to_id","planned_start","due","priority","notes"];
 const PERSON = ["name","email","phone","company","role"];
@@ -40,14 +40,107 @@ export async function saveProject(fd: FormData) {
 }
 
 export async function saveWorkItem(fd: FormData) {
-  const id = (fd.get("id") as string) || null;
+  const supabase = await createClient();
+  let id = (fd.get("id") as string) || null;
   const row = formRow(fd, WORK_ITEM);
   const progress = fd.get("progress");
   row.progress = progress === null || progress === "" ? 0 : Number(progress) / 100;
   row.visible_to_client = fd.get("visible_to_client") === "on";
-  const back = `/projects/${row.project_id}`;
-  await save("work_items", row, id, back);
+  if (!fd.get("keep_beacon_rate")) { const r = fd.get("beacon_rate"); row.beacon_rate = r ? String(r) : null; }
+  const back = (fd.get("back") as string) || `/projects/${row.project_id}`;
+
+  if (id) {
+    const { error } = await supabase.from("work_items").update(row).eq("id", id);
+    if (error) fail(back, error.message);
+  } else {
+    const { data, error } = await supabase.from("work_items").insert(row).select("id").single();
+    if (error) fail(back, error.message);
+    id = data.id as string;
+  }
+
+  if (fd.has("cost_rate")) {
+    const cost = fd.get("cost_rate");
+    const { error } = await supabase.from("work_item_costs").upsert({
+      work_item_id: id, cost_rate: cost ? String(cost) : null,
+      vendor_id: (fd.get("cost_vendor_id") as string) || null, updated_at: new Date().toISOString(),
+    });
+    if (error) fail(back, `Saved, but the cost rate wasn't: ${error.message}`);
+  }
+
+  if (fd.get("team_submitted")) {
+    const team = fd.getAll("team").map(String);
+    const del = await supabase.from("work_item_people").delete().eq("work_item_id", id);
+    if (del.error) fail(back, `Saved, but the team wasn't: ${del.error.message}`);
+    if (team.length) {
+      const ins = await supabase.from("work_item_people").insert(team.map((person_id) => ({ work_item_id: id, person_id })));
+      if (ins.error) fail(back, `Saved, but the team wasn't: ${ins.error.message}`);
+    }
+  }
   revalidatePath("/", "layout");
+  redirect(back);
+}
+
+const SUBMITTAL = ["project_id","number","title","kind","revision","status","submitted_on","due_back","returned_on","link","notes"];
+
+export async function saveSubmittal(fd: FormData) {
+  const supabase = await createClient();
+  const id = (fd.get("id") as string) || null;
+  const back = (fd.get("back") as string) || "/submittals";
+  const row = formRow(fd, SUBMITTAL);
+  if (row.revision === null) row.revision = 0;
+  let sid = id;
+  if (id) {
+    const { error } = await supabase.from("submittals").update(row).eq("id", id);
+    if (error) fail(back, error.message);
+  } else {
+    const { data, error } = await supabase.from("submittals").insert(row).select("id").single();
+    if (error) fail(back, error.message);
+    sid = data.id as string;
+  }
+  const wi = fd.get("work_item_id") as string;
+  if (wi && sid) {
+    const { error } = await supabase.from("work_item_submittals").upsert({ work_item_id: wi, submittal_id: sid });
+    if (error) fail(back, error.message);
+  }
+  revalidatePath("/", "layout");
+  redirect(back);
+}
+
+export async function linkSubmittal(fd: FormData) {
+  const supabase = await createClient();
+  const back = String(fd.get("back"));
+  const row = { work_item_id: String(fd.get("work_item_id")), submittal_id: String(fd.get("submittal_id")) };
+  const { error } = fd.get("unlink")
+    ? await supabase.from("work_item_submittals").delete().match(row)
+    : await supabase.from("work_item_submittals").upsert(row);
+  if (error) fail(back, error.message);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function addAttachmentLink(fd: FormData) {
+  const supabase = await createClient();
+  const back = String(fd.get("back"));
+  const { data: { user } } = await supabase.auth.getUser();
+  const me = user ? (await supabase.from("people").select("id").eq("user_id", user.id).maybeSingle()).data : null;
+  let url = String(fd.get("url") ?? "").trim();
+  if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+  const { error } = await supabase.from("attachments").insert({
+    project_id: fd.get("project_id"), work_item_id: fd.get("work_item_id") || null,
+    file_name: String(fd.get("file_name") || url), kind: fd.get("kind") || "other", url,
+    visible_to_client: fd.get("visible_to_client") === "on", uploaded_by_id: me?.id ?? null,
+  });
+  if (error) fail(back, error.message);
+  revalidatePath(back);
+  redirect(back);
+}
+
+export async function deleteAttachment(fd: FormData) {
+  const supabase = await createClient();
+  const back = String(fd.get("back"));
+  const { error } = await supabase.from("attachments").delete().eq("id", String(fd.get("id")));
+  if (error) fail(back, error.message);
+  revalidatePath(back);
   redirect(back);
 }
 
@@ -126,4 +219,17 @@ export async function saveVendor(fd: FormData) {
   await save("people", row, id, "/procurement/vendors");
   revalidatePath("/", "layout");
   redirect("/procurement/vendors");
+}
+
+export async function saveCostRate(fd: FormData) {
+  const supabase = await createClient();
+  const back = String(fd.get("back"));
+  const cost = fd.get("cost_rate");
+  const { error } = await supabase.from("work_item_costs").upsert({
+    work_item_id: String(fd.get("work_item_id")), cost_rate: cost ? String(cost) : null,
+    vendor_id: (fd.get("cost_vendor_id") as string) || null, updated_at: new Date().toISOString(),
+  });
+  if (error) fail(back, error.message);
+  revalidatePath("/", "layout");
+  redirect(back);
 }

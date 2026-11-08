@@ -41,6 +41,8 @@ const TONE: Record<string, string> = {
   in_progress: "info", po_issued: "info", approved: "info", invoice_received: "info", partly_paid: "info",
   blocked: "bad", rejected: "bad", high: "bad", on_hold: "warn", awaiting_materials: "warn",
   awaiting_approval: "warn", getting_quotes: "warn", requested: "warn",
+  preparations: "warn", ready_for_inspection: "info", vo: "warn", submitted: "info",
+  approved_as_noted: "good", revise_resubmit: "warn", draft: "neutral",
 };
 
 export function Badge({ set, value }: { set: LabelSet; value: string | null }) {

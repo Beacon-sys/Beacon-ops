@@ -42,8 +42,17 @@ export const LABELS = {
     mep_plumbing: "MEP - Plumbing", landscape: "Landscape", general: "General",
   },
   work_item_status: {
-    not_started: "Not started", in_progress: "In progress", awaiting_materials: "Awaiting materials",
-    awaiting_approval: "Awaiting approval", done: "Done", on_hold: "On hold",
+    not_started: "Not started", preparations: "Preparations", in_progress: "In progress",
+    ready_for_inspection: "Ready for inspection", done: "Done", blocked: "Blocked",
+  },
+  item_type: { boq: "BOQ item", vo: "VO" },
+  submittal_kind: {
+    material: "Material", shop_drawing: "Shop drawing", method_statement: "Method statement",
+    sample: "Sample", calculation: "Calculation", other: "Other",
+  },
+  submittal_status: {
+    draft: "Draft", submitted: "Submitted", approved: "Approved", approved_as_noted: "Approved as noted",
+    revise_resubmit: "Revise & resubmit", rejected: "Rejected",
   },
   purchase_status: {
     requested: "Requested", getting_quotes: "Getting quotes", approved: "Approved",
@@ -93,5 +102,11 @@ export const HOME: Partial<Record<Role, string>> = {
   management: "/management", tendering: "/tendering", accountant: "/accounting",
   site_ops: "/operations", procurement: "/procurement",
 };
+
+/** Who sees internal cost rates, and who can set each rate. */
+export const SEES_COST: Role[] = ["management", "procurement", "accountant", "tendering"];
+export const SETS_COST: Role[] = ["management", "procurement", "tendering"];
+export const SETS_PRICE: Role[] = ["management", "tendering"];
+export const EDITS_WORK: Role[] = ["management", "site_ops", "tendering"];
 
 export const allowed = (role: Role, roles: Role[]) => role === "management" || roles.includes(role);
