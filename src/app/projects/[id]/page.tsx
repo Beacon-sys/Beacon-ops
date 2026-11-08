@@ -41,7 +41,7 @@ export default async function ProjectPage({ params, searchParams }: {
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
   const everyone = people.data ?? [];
-  const suppliers = everyone.filter((x) => x.role === "supplier");
+  const suppliers = everyone.filter((x) => x.role === "supplier" || x.role === "contractor");
   const wiOpts = (workItems ?? []).map((w) => ({ id: w.id, name: w.name, project_id: w.project_id }));
 
   const who = (x: unknown) => (x as { name: string } | null)?.name;

@@ -24,7 +24,7 @@ export default async function Operations({ searchParams }: { searchParams: Promi
     supabase.from("people").select("id,name,role").eq("active", true).order("name"),
     supabase.from("project_summary").select("id,name,code,status,avg_progress,committed_spend,contract_value,planned_finish")
       .in("status", ["active", "on_hold"]).order("name"),
-    supabase.from("people").select("id,name").eq("role", "supplier").eq("active", true).order("name"),
+    supabase.from("people").select("id,name").in("role", ["supplier", "contractor"]).eq("active", true).order("name"),
   ]);
 
   return (

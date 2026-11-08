@@ -39,10 +39,10 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/procurement?view=open", label: "Open requests" },
     { href: "/procurement?view=approval", label: "Needs approval" },
     { href: "/procurement?view=all", label: "All purchases" },
-    { href: "/people", label: "Suppliers", roles: ["procurement"] },
+    { href: "/procurement/vendors", label: "Vendors & contractors" },
   ] },
   { href: "/projects", label: "All projects", icon: "folder", roles: ["management", "tendering", "site_ops", "procurement", "accountant"], group: "Records" },
-  { href: "/people", label: "People", icon: "people", roles: ["management", "tendering", "procurement"], group: "Records" },
+  { href: "/people", label: "People", icon: "people", roles: ["management", "tendering"], group: "Records" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

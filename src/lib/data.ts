@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type Role =
   | "management" | "tendering" | "site_ops" | "procurement" | "accountant"
-  | "client" | "consultant" | "supplier";
+  | "client" | "consultant" | "supplier" | "contractor";
 
 export type Me = { id: string; name: string; email: string | null; role: Role };
 
@@ -30,7 +30,7 @@ export const LABELS = {
   role: {
     management: "Management", tendering: "Tendering", accountant: "Accounting",
     site_ops: "Operations", procurement: "Procurement",
-    client: "Client", consultant: "Consultant", supplier: "Supplier",
+    client: "Client", consultant: "Consultant", supplier: "Supplier", contractor: "Contractor",
   },
   project_status: {
     tendering: "Tendering", active: "Active", on_hold: "On hold",

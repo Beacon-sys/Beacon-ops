@@ -112,3 +112,18 @@ export async function setProjectMembers(fd: FormData) {
   revalidatePath(back);
   redirect(back);
 }
+
+const VENDOR = ["name","role","company","vendor_category","contact_person","phone","email","tax_id","commercial_reg","address","payment_terms","notes"];
+
+export async function saveVendor(fd: FormData) {
+  const id = (fd.get("id") as string) || null;
+  const row: Record<string, unknown> = formRow(fd, VENDOR);
+  if (row.email) row.email = String(row.email).trim().toLowerCase();
+  row.trades = fd.getAll("trades").map(String);
+  const rating = fd.get("rating");
+  row.rating = rating ? Number(rating) : null;
+  row.active = fd.get("active") !== "off";
+  await save("people", row, id, "/procurement/vendors");
+  revalidatePath("/", "layout");
+  redirect("/procurement/vendors");
+}

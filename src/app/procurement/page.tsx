@@ -24,7 +24,7 @@ export default async function Procurement({ searchParams }: { searchParams: Prom
     VIEWS[view].apply(supabase.from("purchases").select(PURCHASE_SELECT)).order("needed_by", { nullsFirst: false }),
     supabase.from("projects").select("id,name").order("name"),
     supabase.from("work_items").select("id,name,project_id").order("name"),
-    supabase.from("people").select("id,name").eq("role", "supplier").eq("active", true).order("name"),
+    supabase.from("people").select("id,name").in("role", ["supplier", "contractor"]).eq("active", true).order("name"),
   ]);
 
   return (

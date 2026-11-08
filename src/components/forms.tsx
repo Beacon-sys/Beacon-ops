@@ -59,7 +59,7 @@ export function PurchaseRequestForm({ projects, workItems, suppliers, projectId,
       <Field label="Needed on site by"><input name="needed_by" type="date" className="input" /></Field>
       <Field label="Quantity"><input name="quantity" type="number" step="0.01" className="input" /></Field>
       <Field label="Unit"><input name="unit" className="input" /></Field>
-      <Field label="Preferred supplier"><PersonSelect name="supplier_id" people={suppliers} /></Field>
+      <Field label="Preferred vendor"><PersonSelect name="supplier_id" people={suppliers} /></Field>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} className="input" /></Field></div>
       <div className="sm:col-span-3"><button className="btn btn-primary">Submit request</button></div>
     </form>

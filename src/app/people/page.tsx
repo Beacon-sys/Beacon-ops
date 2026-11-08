@@ -6,7 +6,8 @@ import { ErrorNote } from "@/components/error-note";
 
 export default async function People({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { supabase, me } = await requireMe();
-  if (!["management", "procurement", "tendering"].includes(me.role)) redirect("/");
+  if (me.role === "procurement") redirect("/procurement/vendors");
+  if (!["management", "tendering"].includes(me.role)) redirect("/");
   const { error } = await searchParams;
   const { data: people = [] } = await supabase.from("people").select("*").order("role").order("name");
   const mgmt = me.role === "management";

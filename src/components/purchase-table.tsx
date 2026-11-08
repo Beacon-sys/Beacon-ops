@@ -24,7 +24,7 @@ export function PurchaseTable({ rows, role, suppliers, back, showProject = true 
   const showMoney = role !== "site_ops";
   return (
     <Table
-      head={["Request", ...(showProject ? ["Project"] : []), "Needed by", "Supplier", ...(showMoney ? ["Amount"] : []), "Status", "Payment", ""]}
+      head={["Request", ...(showProject ? ["Project"] : []), "Needed by", "Vendor", ...(showMoney ? ["Amount"] : []), "Status", "Payment", ""]}
       empty={!rows.length}
     >
       {rows.map((x) => {
@@ -64,7 +64,7 @@ export function PurchaseTable({ rows, role, suppliers, back, showProject = true 
                         <form action={updatePurchase} className="mb-3 grid gap-2 border-b border-line pb-3">
                           <input type="hidden" name="id" value={x.id} />
                           <input type="hidden" name="back" value={back} />
-                          <Field label="Supplier"><PersonSelect name="supplier_id" people={suppliers} defaultValue={x.supplier_id} /></Field>
+                          <Field label="Vendor"><PersonSelect name="supplier_id" people={suppliers} defaultValue={x.supplier_id} /></Field>
                           <Field label="PO number"><input name="po_number" defaultValue={x.po_number ?? ""} className="input" /></Field>
                           <Field label="Amount (EGP)"><input name="amount" type="number" step="0.01" defaultValue={x.amount ?? ""} className="input" /></Field>
                           <button className="btn btn-sm btn-primary justify-center">Save order details</button>

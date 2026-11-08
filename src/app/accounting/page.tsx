@@ -17,7 +17,7 @@ export default async function Accounting({ searchParams }: { searchParams: Promi
       .order("needed_by", { nullsFirst: false }),
     supabase.from("project_summary").select("id,name,code,status,contract_value,committed_spend,paid_to_date")
       .neq("status", "closed").order("name"),
-    supabase.from("people").select("id,name").eq("role", "supplier").order("name"),
+    supabase.from("people").select("id,name").in("role", ["supplier", "contractor"]).order("name"),
   ]);
   const rows = (toPay.data ?? []) as unknown as PurchaseRow[];
   const owed = rows.reduce((s, r) => s + Number(r.amount ?? 0), 0);
