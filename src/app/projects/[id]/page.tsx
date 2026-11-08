@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireMe, isInternal, money, date, SEES_COST, SETS_COST, SETS_PRICE } from "@/lib/data";
 import { Database, type Row } from "@/components/database";
 import { workItemColumns, taskColumns, purchaseColumns } from "@/lib/db-columns";
+import { withCustomFields } from "@/lib/custom-fields";
 import { PageTitle, Card, Stat, Badge, Progress } from "@/components/ui";
 import { WorkItemForm, PurchaseRequestForm, SiteTaskForm } from "@/components/forms";
 import { ErrorNote } from "@/components/error-note";
@@ -49,6 +50,12 @@ export default async function ProjectPage({ params, searchParams }: {
   const taskRows = (tasks.data ?? []).map((t) => ({ ...t, assignee_name: who(t.assignee), work_item_name: who(t.work_item) })) as Row[];
   const purchaseRows = (purchases.data ?? []).map((x) => ({ ...x, supplier_name: who(x.supplier), work_item_name: who(x.work_item) })) as Row[];
   const canBuy = ["management", "procurement", "accountant"].includes(me.role);
+  const mgr = me.role === "management";
+  const [wiDb, taskDb, buyDb] = await Promise.all([
+    withCustomFields(supabase, "work_items", workItemColumns(me.role, SEES_COST.includes(me.role)), (workItems ?? []) as Row[], true, !internal),
+    internal ? withCustomFields(supabase, "site_tasks", taskColumns(everyone, wiOpts), taskRows) : { columns: [], rows: [] },
+    internal ? withCustomFields(supabase, "purchases", purchaseColumns(me.role, suppliers, wiOpts), purchaseRows) : { columns: [], rows: [] },
+  ]);
 
   return (
     <>
@@ -77,8 +84,8 @@ export default async function ProjectPage({ params, searchParams }: {
       )}
 
       <Card title="Work items" action={<Link className="link text-sm" href={`/submittals?project=${id}`}>Submittals register</Link>}>
-        <Database id={`work-items:${id}`} table="work_items" rows={(workItems ?? []) as Row[]} titleKey="name"
-          columns={workItemColumns(me.role, SEES_COST.includes(me.role))} href={internal ? "/work-items/:id" : undefined}
+        <Database id={`work-items:${id}`} table="work_items" rows={wiDb.rows} titleKey="name"
+          columns={wiDb.columns} fieldsTable="work_items" canManageFields={mgr} href={internal ? "/work-items/:id" : undefined}
           editable={canEditWork} createDefaults={{ project_id: id }} initial={{ group: "category" }} />
         {canEditWork && (
           <details className="mt-4">
@@ -94,8 +101,8 @@ export default async function ProjectPage({ params, searchParams }: {
       {internal && (
         <>
           <Card title="Site tasks">
-            <Database id={`tasks:${id}`} table="site_tasks" rows={taskRows} titleKey="task"
-              columns={taskColumns(everyone, wiOpts)} editable={canEditWork} createDefaults={{ project_id: id }} initial={{ boardBy: "status" }} />
+            <Database id={`tasks:${id}`} table="site_tasks" rows={taskDb.rows} titleKey="task"
+              columns={taskDb.columns} fieldsTable="site_tasks" canManageFields={mgr} editable={canEditWork} createDefaults={{ project_id: id }} initial={{ boardBy: "status" }} />
             {canEditWork && (
               <details className="mt-4">
                 <summary className="btn btn-sm list-none">+ Add site task</summary>
@@ -104,8 +111,8 @@ export default async function ProjectPage({ params, searchParams }: {
             )}
           </Card>
           <Card title="Purchasing">
-            <Database id={`purchases:${id}`} table="purchases" rows={purchaseRows} titleKey="request"
-              columns={purchaseColumns(me.role, suppliers, wiOpts)} editable={canBuy} creatable={me.role !== "accountant"} createDefaults={{ project_id: id }} views={["table", "board", "calendar"]} />
+            <Database id={`purchases:${id}`} table="purchases" rows={buyDb.rows} titleKey="request"
+              columns={buyDb.columns} fieldsTable="purchases" canManageFields={mgr} editable={canBuy} creatable={me.role !== "accountant"} createDefaults={{ project_id: id }} views={["table", "board", "calendar"]} />
             <p className="mt-2 text-xs text-muted">Approvals and PO steps are on the <Link className="link" href="/procurement?view=all">Procurement</Link> page.</p>
             {canRequest && (
               <details className="mt-4">

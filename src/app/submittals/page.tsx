@@ -1,6 +1,7 @@
 import { requireMe, isInternal } from "@/lib/data";
 import { Database, type Row } from "@/components/database";
 import { submittalColumns } from "@/lib/db-columns";
+import { withCustomFields } from "@/lib/custom-fields";
 import { PageTitle, Card, Field, Select } from "@/components/ui";
 import { saveSubmittal } from "@/app/actions";
 import { ErrorNote } from "@/components/error-note";
@@ -32,6 +33,7 @@ export default async function Submittals({ searchParams }: {
     ...x, project_name: x.project?.name,
     work_items_text: x.items.map((i) => i.work_item && (i.work_item.boq_ref ?? i.work_item.name)).filter(Boolean).join(", "),
   })) as unknown as Row[];
+  const db = await withCustomFields(supabase, "submittals", submittalColumns(!projectId), rows, true, !internal);
   const back = `/submittals${projectId ? `?project=${projectId}` : ""}`;
 
   return (
@@ -50,8 +52,8 @@ export default async function Submittals({ searchParams }: {
       </form>
 
       <Card>
-        <Database id={`submittals:${projectId || "all"}`} table="submittals" rows={rows} titleKey="title"
-          columns={submittalColumns(!projectId)} editable={canEdit && internal} creatable={canEdit && internal && !!projectId}
+        <Database id={`submittals:${projectId || "all"}`} table="submittals" rows={db.rows} titleKey="title"
+          columns={db.columns} fieldsTable="submittals" canManageFields={me.role === "management"} editable={canEdit && internal} creatable={canEdit && internal && !!projectId}
           createDefaults={projectId ? { project_id: projectId } : undefined} initial={{ boardBy: "status" }} />
       </Card>
 

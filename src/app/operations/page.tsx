@@ -4,6 +4,7 @@ import { requireMe, allowed } from "@/lib/data";
 import { PageTitle, Card } from "@/components/ui";
 import { Database, type Row } from "@/components/database";
 import { taskColumns } from "@/lib/db-columns";
+import { withCustomFields } from "@/lib/custom-fields";
 import { SiteTaskForm, PurchaseRequestForm } from "@/components/forms";
 import { ProjectList, type ProjectRow } from "@/components/project-list";
 import { ErrorNote } from "@/components/error-note";
@@ -31,6 +32,8 @@ export default async function Operations({ searchParams }: { searchParams: Promi
   const nm = (x: unknown) => (x as { name: string } | null)?.name;
   const taskRows = (rows.data ?? []).map((t) => ({ ...t, project_name: nm(t.project), assignee_name: nm(t.assignee), work_item_name: nm(t.work_item) })) as Row[];
 
+  const db = await withCustomFields(supabase, "site_tasks", taskColumns(people.data ?? [], workItems.data ?? [], true), taskRows);
+
   return (
     <>
       <PageTitle title="Operations" sub="Projects on site, site tasks and material requests" />
@@ -42,8 +45,8 @@ export default async function Operations({ searchParams }: { searchParams: Promi
           <Link key={k} href={`/operations?view=${k}`} className={`btn btn-sm ${k === view ? "btn-primary" : ""}`}>{l}</Link>
         ))}
       </div>
-      <Card><Database id={`ops-tasks:${view}`} table="site_tasks" rows={taskRows} titleKey="task" editable creatable={false}
-        columns={taskColumns(people.data ?? [], workItems.data ?? [], true)} initial={{ boardBy: "status", group: "project_name" }} views={["table", "board", "calendar", "list"]} /></Card>
+      <Card><Database id={`ops-tasks:${view}`} table="site_tasks" rows={db.rows} titleKey="task" editable creatable={false}
+        columns={db.columns} fieldsTable="site_tasks" canManageFields={me.role === "management"} initial={{ boardBy: "status", group: "project_name" }} views={["table", "board", "calendar", "list"]} /></Card>
       <Card title="Request materials" id="request">
         <PurchaseRequestForm projects={projects.data ?? []} workItems={workItems.data ?? []} suppliers={suppliers.data ?? []} back={back} />
       </Card>
