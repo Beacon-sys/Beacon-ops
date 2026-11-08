@@ -27,6 +27,7 @@ export function WorkItemForm({ projectId, item, people }: {
       <Field label="Budget (EGP)"><input name="budget" type="number" step="0.01" defaultValue={v("budget")} className="input" /></Field>
       <Field label="Planned start"><input name="planned_start" type="date" defaultValue={v("planned_start")} className="input" /></Field>
       <Field label="Planned finish"><input name="planned_finish" type="date" defaultValue={v("planned_finish")} className="input" /></Field>
+      <Field label="Actual start"><input name="actual_start" type="date" defaultValue={v("actual_start")} className="input" /></Field>
       <Field label="Actual finish"><input name="actual_finish" type="date" defaultValue={v("actual_finish")} className="input" /></Field>
       <Field label="Quantity"><input name="quantity" type="number" step="0.01" defaultValue={v("quantity")} className="input" /></Field>
       <Field label="Unit"><input name="unit" defaultValue={v("unit")} className="input" /></Field>
@@ -84,6 +85,7 @@ export function SiteTaskForm({ projects, workItems, people, projectId, back }: {
       </Field>
       <Field label="Type"><Select name="type" set="site_task_type" blank /></Field>
       <Field label="Assigned to"><PersonSelect name="assigned_to_id" people={people.filter((p) => ["management","site_ops"].includes(p.role))} /></Field>
+      <Field label="Planned start"><input name="planned_start" type="date" className="input" /></Field>
       <Field label="Due"><input name="due" type="date" className="input" /></Field>
       <Field label="Priority"><Select name="priority" set="priority" defaultValue="medium" /></Field>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} className="input" /></Field></div>

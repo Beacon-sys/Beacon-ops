@@ -33,6 +33,7 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/operations?view=mine", label: "My tasks" },
     { href: "/operations?view=open", label: "All open tasks" },
     { href: "/operations?view=all", label: "Task history" },
+    { href: "/timeline", label: "Timeline" },
     { href: "/operations#request", label: "Request materials" },
   ] },
   { href: "/procurement", label: "Procurement", icon: "cart", roles: ["management", "procurement"], group: "Departments", children: [
@@ -41,6 +42,7 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/procurement?view=all", label: "All purchases" },
     { href: "/procurement/vendors", label: "Vendors & contractors" },
   ] },
+  { href: "/timeline", label: "Timeline", icon: "chart", roles: ["management", "tendering", "site_ops", "procurement", "accountant", "client", "consultant"], group: "Records" },
   { href: "/projects", label: "All projects", icon: "folder", roles: ["management", "tendering", "site_ops", "procurement", "accountant"], group: "Records" },
   { href: "/people", label: "People", icon: "people", roles: ["management", "tendering"], group: "Records" },
 ];

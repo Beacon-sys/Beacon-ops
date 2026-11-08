@@ -6,9 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { formRow } from "@/lib/data";
 
 const PROJECT = ["name","code","client_id","consultant_id","project_manager_id","location","status","start_date","planned_finish","contract_value"];
-const WORK_ITEM = ["project_id","name","boq_ref","trade","area","status","responsible_id","planned_start","planned_finish","actual_finish","quantity","unit","budget","notes"];
+const WORK_ITEM = ["project_id","name","boq_ref","trade","area","status","responsible_id","planned_start","planned_finish","actual_start","actual_finish","quantity","unit","budget","notes"];
 const PURCHASE = ["project_id","work_item_id","request","needed_by","quantity","unit","supplier_id","notes"];
-const SITE_TASK = ["project_id","work_item_id","task","type","assigned_to_id","due","priority","notes"];
+const SITE_TASK = ["project_id","work_item_id","task","type","assigned_to_id","planned_start","due","priority","notes"];
 const PERSON = ["name","email","phone","company","role"];
 
 function fail(back: string, message: string): never {

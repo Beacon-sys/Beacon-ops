@@ -51,7 +51,7 @@ export default async function ProjectPage({ params, searchParams }: {
       <PageTitle
         title={p.name}
         sub={[p.code, p.location, who(p.client) && `Client: ${who(p.client)}`, who(p.consultant) && `Consultant: ${who(p.consultant)}`, who(p.pm) && `PM: ${who(p.pm)}`].filter(Boolean).join(" · ")}
-        action={me.role === "management" || tenderOpen ? <Link className="btn" href={`${back}/edit`}>Edit project</Link> : null}
+        action={<div className="flex gap-2"><Link className="btn" href={`/timeline?project=${id}`}>Timeline</Link>{(me.role === "management" || tenderOpen) && <Link className="btn" href={`${back}/edit`}>Edit project</Link>}</div>}
       />
       <ErrorNote error={error} />
 
