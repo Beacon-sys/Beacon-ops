@@ -26,5 +26,8 @@ their email; when they sign up with that email their login is linked automatical
 
 ## Hosting
 
-Deployed on Netlify (free plan) from the `main` branch; settings in `netlify.toml`.
-In Supabase → Authentication → URL Configuration, the Site URL must be the Netlify URL.
+Deployed on Cloudflare Workers (free plan) from the `main` branch with Workers Builds
+(build command `npx opennextjs-cloudflare build`, deploy command `npx wrangler deploy`).
+Config: `wrangler.jsonc`, `open-next.config.ts`. Netlify was tried first but its servers
+time out from Egyptian networks.
+In Supabase → Authentication → URL Configuration, the Site URL must be the app's URL.
