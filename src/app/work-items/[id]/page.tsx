@@ -210,6 +210,12 @@ export default async function WorkItemPage({ params, searchParams }: {
               </form>
             </Card>
           )}
+          {internal && w.contract_id && (
+            <Card title="Contract">
+              <Link className="link text-sm" href={`/procurement/contracts/${w.contract_id}`}>Open contract</Link>
+              <p className="mt-1 text-xs text-muted">The cost rate comes from this contract.</p>
+            </Card>
+          )}
           {w.notes && <Card title="Notes"><p className="whitespace-pre-wrap text-sm">{w.notes}</p></Card>}
         </div>
       </div>

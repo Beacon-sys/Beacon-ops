@@ -41,6 +41,7 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/procurement?view=open", label: "Open requests" },
     { href: "/procurement?view=approval", label: "Needs approval" },
     { href: "/procurement?view=all", label: "All purchases" },
+    { href: "/procurement/contracts", label: "Contracts" },
     { href: "/procurement/vendors", label: "Vendors & contractors" },
   ] },
   { href: "/timeline", label: "Timeline", icon: "chart", roles: ["management", "tendering", "site_ops", "procurement", "accountant", "client", "consultant"], group: "Records" },

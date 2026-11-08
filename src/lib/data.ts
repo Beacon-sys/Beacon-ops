@@ -46,6 +46,9 @@ export const LABELS = {
     ready_for_inspection: "Ready for inspection", done: "Done", blocked: "Blocked",
   },
   item_type: { boq: "BOQ item", vo: "VO" },
+  contract_status: {
+    draft: "Draft", signed: "Signed", in_progress: "In progress", completed: "Completed", terminated: "Terminated",
+  },
   submittal_kind: {
     material: "Material", shop_drawing: "Shop drawing", method_statement: "Method statement",
     sample: "Sample", calculation: "Calculation", other: "Other",

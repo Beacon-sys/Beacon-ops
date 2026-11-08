@@ -233,3 +233,51 @@ export async function saveCostRate(fd: FormData) {
   revalidatePath("/", "layout");
   redirect(back);
 }
+
+const CONTRACT = ["project_id","vendor_id","number","title","status","start_date","finish_date","retention_pct","link","notes"];
+
+export async function saveContract(fd: FormData) {
+  const supabase = await createClient();
+  const id = (fd.get("id") as string) || null;
+  const back = (fd.get("back") as string) || "/procurement/contracts";
+  const row = formRow(fd, CONTRACT);
+  if (id) {
+    const { error } = await supabase.from("contracts").update(row).eq("id", id);
+    if (error) fail(back, error.message);
+    revalidatePath("/", "layout");
+    redirect(back);
+  }
+  const { data, error } = await supabase.from("contracts").insert(row).select("id").single();
+  if (error) fail(back, error.message);
+  revalidatePath("/", "layout");
+  redirect(`/procurement/contracts/${data.id}`);
+}
+
+/** Add or update work items on a contract. Rows arrive as item_<work_item_id>_rate etc. */
+export async function saveContractItems(fd: FormData) {
+  const supabase = await createClient();
+  const contractId = String(fd.get("contract_id"));
+  const back = `/procurement/contracts/${contractId}`;
+  const ids = fd.getAll("work_item_id").map(String);
+  const rows = ids.map((wid) => {
+    const g = (k: string) => { const v = fd.get(`${k}_${wid}`); return v === null || v === "" ? null : String(v); };
+    return { contract_id: contractId, work_item_id: wid, rate: g("rate"), quantity: g("quantity"), start_date: g("start_date"), finish_date: g("finish_date") };
+  });
+  if (rows.length) {
+    const { error } = await supabase.from("contract_items").upsert(rows);
+    if (error) fail(back, error.message);
+  }
+  revalidatePath("/", "layout");
+  redirect(back);
+}
+
+export async function removeContractItem(fd: FormData) {
+  const supabase = await createClient();
+  const contractId = String(fd.get("contract_id"));
+  const back = `/procurement/contracts/${contractId}`;
+  const { error } = await supabase.from("contract_items").delete()
+    .match({ contract_id: contractId, work_item_id: String(fd.get("remove_id")) });
+  if (error) fail(back, error.message);
+  revalidatePath("/", "layout");
+  redirect(back);
+}

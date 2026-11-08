@@ -62,7 +62,7 @@ export default async function Vendors({ searchParams }: {
             const s = sum.get(v.id);
             return (
               <tr key={v.id} className={v.active ? "" : "opacity-50"}>
-                <td><div className="font-medium">{v.name}</div>{v.company && v.company !== v.name && <div className="text-xs text-muted">{v.company}</div>}</td>
+                <td><Link className="link font-medium" href={`/procurement/vendors/${v.id}`}>{v.name}</Link>{v.company && v.company !== v.name && <div className="text-xs text-muted">{v.company}</div>}</td>
                 <td><span className={`badge ${v.role === "contractor" ? "badge-info" : "badge-neutral"}`}>{LABELS.role[v.role as "supplier"]}</span></td>
                 <td>
                   <div>{v.vendor_category}</div>
