@@ -1,6 +1,7 @@
-import Link from "next/link";
-import { requireMe, isInternal, date, label } from "@/lib/data";
-import { PageTitle, Card, Table, Badge, Field, Select } from "@/components/ui";
+import { requireMe, isInternal } from "@/lib/data";
+import { Database, type Row } from "@/components/database";
+import { submittalColumns } from "@/lib/db-columns";
+import { PageTitle, Card, Field, Select } from "@/components/ui";
 import { saveSubmittal } from "@/app/actions";
 import { ErrorNote } from "@/components/error-note";
 
@@ -27,7 +28,10 @@ export default async function Submittals({ searchParams }: {
   if (sp.status === "open") q = q.in("status", ["draft", "submitted", "revise_resubmit"]);
   const { data } = await q;
   const subs = (data ?? []) as unknown as Sub[];
-  const today = new Date().toISOString().slice(0, 10);
+  const rows = subs.map((x) => ({
+    ...x, project_name: x.project?.name,
+    work_items_text: x.items.map((i) => i.work_item && (i.work_item.boq_ref ?? i.work_item.name)).filter(Boolean).join(", "),
+  })) as unknown as Row[];
   const back = `/submittals${projectId ? `?project=${projectId}` : ""}`;
 
   return (
@@ -46,39 +50,9 @@ export default async function Submittals({ searchParams }: {
       </form>
 
       <Card>
-        <Table head={["No.", "Title", ...(projectId ? [] : ["Project"]), "Work items", "Type", "Rev", "Status", "Submitted", "Due back", "Returned", ...(canEdit ? [""] : [])]} empty={!subs.length}>
-          {subs.map((s) => {
-            const overdue = s.status === "submitted" && s.due_back && s.due_back < today;
-            return (
-              <tr key={s.id}>
-                <td className="whitespace-nowrap">{s.number}</td>
-                <td>{s.link ? <a className="link" href={s.link} target="_blank" rel="noreferrer">{s.title}</a> : s.title}</td>
-                {!projectId && <td className="text-muted">{s.project?.name}</td>}
-                <td className="text-xs">
-                  {s.items.map((i) => i.work_item && (
-                    <div key={i.work_item.id}><Link className="link" href={`/work-items/${i.work_item.id}`}>{i.work_item.boq_ref ?? i.work_item.name}</Link></div>
-                  ))}
-                </td>
-                <td>{label("submittal_kind", s.kind)}</td>
-                <td>{s.revision}</td>
-                <td><Badge set="submittal_status" value={s.status} /></td>
-                <td>{date(s.submitted_on)}</td>
-                <td className={overdue ? "font-medium text-[var(--bad)]" : ""}>{date(s.due_back)}</td>
-                <td>{date(s.returned_on)}</td>
-                {canEdit && (
-                  <td className="text-right">
-                    <details className="relative inline-block text-left">
-                      <summary className="btn btn-sm list-none">Update</summary>
-                      <div className="absolute right-0 z-10 mt-1 w-[min(90vw,520px)] rounded-xl border border-line bg-surface p-4 shadow-lg">
-                        <SubmittalForm s={s} back={back} />
-                      </div>
-                    </details>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-        </Table>
+        <Database id={`submittals:${projectId || "all"}`} table="submittals" rows={rows} titleKey="title"
+          columns={submittalColumns(!projectId)} editable={canEdit && internal} creatable={canEdit && internal && !!projectId}
+          createDefaults={projectId ? { project_id: projectId } : undefined} initial={{ boardBy: "status" }} />
       </Card>
 
       {canEdit && internal && (

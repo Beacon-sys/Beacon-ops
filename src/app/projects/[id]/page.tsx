@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMe, isInternal, money, date, SEES_COST, SETS_COST, SETS_PRICE } from "@/lib/data";
-import { WorkItemsTable, type WorkItemRow } from "@/components/work-items-table";
+import { Database, type Row } from "@/components/database";
+import { workItemColumns, taskColumns, purchaseColumns } from "@/lib/db-columns";
 import { PageTitle, Card, Stat, Badge, Progress } from "@/components/ui";
 import { WorkItemForm, PurchaseRequestForm, SiteTaskForm } from "@/components/forms";
-import { PurchaseTable, PURCHASE_SELECT, type PurchaseRow } from "@/components/purchase-table";
-import { TaskTable, TASK_SELECT, type TaskRow } from "@/components/task-table";
 import { ErrorNote } from "@/components/error-note";
 
 export default async function ProjectPage({ params, searchParams }: {
@@ -36,8 +35,8 @@ export default async function ProjectPage({ params, searchParams }: {
 
   const [tasks, purchases, people] = internal
     ? await Promise.all([
-        supabase.from("site_tasks").select(TASK_SELECT).eq("project_id", id).order("status").order("due", { nullsFirst: false }),
-        supabase.from("purchases").select(PURCHASE_SELECT).eq("project_id", id).order("created_at", { ascending: false }),
+        supabase.from("site_tasks").select("*, assignee:people!site_tasks_assigned_to_id_fkey(name), work_item:work_items(name)").eq("project_id", id).order("status").order("due", { nullsFirst: false }),
+        supabase.from("purchases").select("*, supplier:people!purchases_supplier_id_fkey(name), work_item:work_items(name)").eq("project_id", id).order("created_at", { ascending: false }),
         supabase.from("people").select("id,name,role").eq("active", true).order("name"),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
@@ -47,6 +46,9 @@ export default async function ProjectPage({ params, searchParams }: {
   const wiOpts = (workItems ?? []).map((w) => ({ id: w.id, name: w.name, project_id: w.project_id }));
 
   const who = (x: unknown) => (x as { name: string } | null)?.name;
+  const taskRows = (tasks.data ?? []).map((t) => ({ ...t, assignee_name: who(t.assignee), work_item_name: who(t.work_item) })) as Row[];
+  const purchaseRows = (purchases.data ?? []).map((x) => ({ ...x, supplier_name: who(x.supplier), work_item_name: who(x.work_item) })) as Row[];
+  const canBuy = ["management", "procurement", "accountant"].includes(me.role);
 
   return (
     <>
@@ -75,7 +77,9 @@ export default async function ProjectPage({ params, searchParams }: {
       )}
 
       <Card title="Work items" action={<Link className="link text-sm" href={`/submittals?project=${id}`}>Submittals register</Link>}>
-        <WorkItemsTable items={(workItems ?? []) as WorkItemRow[]} showCost={SEES_COST.includes(me.role)} internal={internal} />
+        <Database id={`work-items:${id}`} table="work_items" rows={(workItems ?? []) as Row[]} titleKey="name"
+          columns={workItemColumns(me.role, SEES_COST.includes(me.role))} href={internal ? "/work-items/:id" : undefined}
+          editable={canEditWork} createDefaults={{ project_id: id }} initial={{ group: "category" }} />
         {canEditWork && (
           <details className="mt-4">
             <summary className="btn btn-sm list-none">+ Add work item</summary>
@@ -90,7 +94,8 @@ export default async function ProjectPage({ params, searchParams }: {
       {internal && (
         <>
           <Card title="Site tasks">
-            <TaskTable rows={(tasks.data ?? []) as unknown as TaskRow[]} canEdit={canEditWork} back={back} showProject={false} />
+            <Database id={`tasks:${id}`} table="site_tasks" rows={taskRows} titleKey="task"
+              columns={taskColumns(everyone, wiOpts)} editable={canEditWork} createDefaults={{ project_id: id }} initial={{ boardBy: "status" }} />
             {canEditWork && (
               <details className="mt-4">
                 <summary className="btn btn-sm list-none">+ Add site task</summary>
@@ -99,7 +104,9 @@ export default async function ProjectPage({ params, searchParams }: {
             )}
           </Card>
           <Card title="Purchasing">
-            <PurchaseTable rows={(purchases.data ?? []) as unknown as PurchaseRow[]} role={me.role} suppliers={suppliers} back={back} showProject={false} />
+            <Database id={`purchases:${id}`} table="purchases" rows={purchaseRows} titleKey="request"
+              columns={purchaseColumns(me.role, suppliers, wiOpts)} editable={canBuy} creatable={me.role !== "accountant"} createDefaults={{ project_id: id }} views={["table", "board", "calendar"]} />
+            <p className="mt-2 text-xs text-muted">Approvals and PO steps are on the <Link className="link" href="/procurement?view=all">Procurement</Link> page.</p>
             {canRequest && (
               <details className="mt-4">
                 <summary className="btn btn-sm list-none">+ Request materials</summary>

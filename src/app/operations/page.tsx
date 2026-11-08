@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireMe, allowed } from "@/lib/data";
 import { PageTitle, Card } from "@/components/ui";
-import { TaskTable, TASK_SELECT, type TaskRow } from "@/components/task-table";
+import { Database, type Row } from "@/components/database";
+import { taskColumns } from "@/lib/db-columns";
 import { SiteTaskForm, PurchaseRequestForm } from "@/components/forms";
 import { ProjectList, type ProjectRow } from "@/components/project-list";
 import { ErrorNote } from "@/components/error-note";
@@ -14,7 +15,7 @@ export default async function Operations({ searchParams }: { searchParams: Promi
   const view = sp.view === "all" ? "all" : sp.view === "mine" ? "mine" : "open";
   const back = `/operations?view=${view}`;
 
-  let q = supabase.from("site_tasks").select(TASK_SELECT);
+  let q = supabase.from("site_tasks").select("*, project:projects(name), assignee:people!site_tasks_assigned_to_id_fkey(name), work_item:work_items(name)");
   if (view === "open") q = q.neq("status", "done");
   if (view === "mine") q = q.eq("assigned_to_id", me.id).neq("status", "done");
   const [rows, projects, workItems, people, active, suppliers] = await Promise.all([
@@ -27,6 +28,9 @@ export default async function Operations({ searchParams }: { searchParams: Promi
     supabase.from("people").select("id,name").in("role", ["supplier", "contractor"]).eq("active", true).order("name"),
   ]);
 
+  const nm = (x: unknown) => (x as { name: string } | null)?.name;
+  const taskRows = (rows.data ?? []).map((t) => ({ ...t, project_name: nm(t.project), assignee_name: nm(t.assignee), work_item_name: nm(t.work_item) })) as Row[];
+
   return (
     <>
       <PageTitle title="Operations" sub="Projects on site, site tasks and material requests" />
@@ -38,7 +42,8 @@ export default async function Operations({ searchParams }: { searchParams: Promi
           <Link key={k} href={`/operations?view=${k}`} className={`btn btn-sm ${k === view ? "btn-primary" : ""}`}>{l}</Link>
         ))}
       </div>
-      <Card><TaskTable rows={(rows.data ?? []) as unknown as TaskRow[]} canEdit back={back} /></Card>
+      <Card><Database id={`ops-tasks:${view}`} table="site_tasks" rows={taskRows} titleKey="task" editable creatable={false}
+        columns={taskColumns(people.data ?? [], workItems.data ?? [], true)} initial={{ boardBy: "status", group: "project_name" }} views={["table", "board", "calendar", "list"]} /></Card>
       <Card title="Request materials" id="request">
         <PurchaseRequestForm projects={projects.data ?? []} workItems={workItems.data ?? []} suppliers={suppliers.data ?? []} back={back} />
       </Card>

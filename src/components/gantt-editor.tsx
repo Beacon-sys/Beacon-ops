@@ -78,7 +78,6 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
   const endDay = Math.max(...all) + 21;
   const width = (endDay - startDay + 1) * px;
   const x = (d: number) => (d - startDay) * px;
-  const msRow = projectId ? MS_ROW : 0;
   const index = new Map(rows.map((r, i) => [r.id, i]));
 
   const months: number[] = [], ticks: number[] = [];
