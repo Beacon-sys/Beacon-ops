@@ -40,7 +40,7 @@ export default async function Tendering() {
           ))}
         </Table>
       </Card>
-      <Card title="Recently handed to Operations">
+      <Card title="Won tenders (handed to Operations)" id="won">
         <Table head={["Project", "Status", "Start"]} empty={!recent?.length}>
           {(recent ?? []).map((p) => (
             <tr key={p.id}>

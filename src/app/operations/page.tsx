@@ -39,7 +39,7 @@ export default async function Operations({ searchParams }: { searchParams: Promi
         ))}
       </div>
       <Card><TaskTable rows={(rows.data ?? []) as unknown as TaskRow[]} canEdit back={back} /></Card>
-      <Card title="Request materials">
+      <Card title="Request materials" id="request">
         <PurchaseRequestForm projects={projects.data ?? []} workItems={workItems.data ?? []} suppliers={suppliers.data ?? []} back={back} />
       </Card>
       <Card title="Add a site task">

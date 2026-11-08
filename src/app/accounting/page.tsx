@@ -37,7 +37,7 @@ export default async function Accounting({ searchParams }: { searchParams: Promi
       <Card title="To pay">
         <PurchaseTable rows={rows} role={me.role} suppliers={suppliers.data ?? []} back={back} />
       </Card>
-      <Card title="Project finances">
+      <Card title="Project finances" id="finances">
         <Table head={["Project", "Status", "Contract", "Committed", "Paid", "Still to pay"]} empty={!ps.length}>
           {ps.map((p) => (
             <tr key={p.id}>

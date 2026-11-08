@@ -13,9 +13,9 @@ export function PageTitle({ title, sub, action }: { title: string; sub?: string;
   );
 }
 
-export function Card({ title, children, action }: { title?: string; children: React.ReactNode; action?: React.ReactNode }) {
+export function Card({ title, children, action, id }: { title?: string; children: React.ReactNode; action?: React.ReactNode; id?: string }) {
   return (
-    <section className="mb-6 rounded-xl border border-line bg-surface">
+    <section id={id} className="mb-6 scroll-mt-20 rounded-xl border border-line bg-surface">
       {(title || action) && (
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
           <h2 className="font-medium">{title}</h2>
