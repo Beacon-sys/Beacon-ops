@@ -7,14 +7,15 @@ import { createClient } from "@/lib/supabase/server";
 const EDITABLE: Record<string, string[]> = {
   work_items: ["name","boq_ref","item_type","category","trade","area","quantity","unit","beacon_rate","status","progress",
     "planned_start","planned_finish","actual_start","actual_finish","visible_to_client","notes"],
-  site_tasks: ["task","type","assigned_to_id","planned_start","started_on","due","priority","status","notes","work_item_id"],
+  site_tasks: ["task","type","assigned_to_id","party","planned_start","started_on","due","priority","status","notes","work_item_id"],
   purchases: ["request","needed_by","quantity","unit","supplier_id","po_number","amount","status","payment_status","invoice_no","notes","work_item_id"],
   submittals: ["number","title","kind","revision","status","submitted_on","due_back","returned_on","link","notes"],
   people: ["name","company","role","active","vendor_category","contact_person","phone","email","payment_terms","rating","notes"],
   contracts: ["number","title","status","start_date","finish_date","retention_pct","link","notes"],
+  meetings: ["title","meeting_date","kind","location","attendees","notes"],
 };
 const CREATE_EXTRA: Record<string, string[]> = {
-  work_items: ["project_id"], site_tasks: ["project_id"], purchases: ["project_id"], submittals: ["project_id"],
+  work_items: ["project_id"], site_tasks: ["project_id","meeting_id"], meetings: ["project_id"], purchases: ["project_id"], submittals: ["project_id"],
   people: ["role"], contracts: ["project_id","vendor_id"],
 };
 
@@ -64,7 +65,7 @@ async function createRowInner(supabase: Awaited<ReturnType<typeof createClient>>
 }
 
 export async function deleteRow(table: string, id: string): Promise<{ error?: string }> {
-  if (!["work_items", "site_tasks", "purchases", "submittals"].includes(table)) return { error: "Can't delete here." };
+  if (!["work_items", "site_tasks", "purchases", "submittals", "meetings"].includes(table)) return { error: "Can't delete here." };
   const supabase = await createClient();
   const { error } = await supabase.from(table).delete().eq("id", id);
   revalidatePath("/", "layout");

@@ -71,6 +71,11 @@ export const LABELS = {
   },
   site_task_status: { to_do: "To do", in_progress: "In progress", blocked: "Blocked", done: "Done" },
   priority: { high: "High", medium: "Medium", low: "Low" },
+  party: { beacon: "Beacon", client: "Client", consultant: "Consultant", contractor: "Contractor" },
+  meeting_kind: {
+    progress: "Progress", site: "Site", client: "With client", consultant: "With consultant",
+    coordination: "Coordination", internal: "Internal", other: "Other",
+  },
 } as const;
 
 export type LabelSet = keyof typeof LABELS;

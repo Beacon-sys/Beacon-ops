@@ -1,7 +1,8 @@
 // Databases that a page's linked view can show, loaded with columns and the viewer's edit rights.
 import type { Column, Row } from "@/components/database";
 import { LABELS, SEES_COST, isInternal, type Me } from "@/lib/data";
-import { workItemColumns, taskColumns, purchaseColumns, submittalColumns, contractColumns, vendorColumns } from "@/lib/db-columns";
+import { workItemColumns, taskColumns, purchaseColumns, submittalColumns, contractColumns, vendorColumns, meetingColumns } from "@/lib/db-columns";
+import { loadMeetings } from "@/lib/meetings";
 import { withCustomFields } from "@/lib/custom-fields";
 import { PURCHASE_ROWS, purchaseRow } from "@/lib/project-db";
 import type { createClient } from "@/lib/supabase/server";
@@ -9,7 +10,7 @@ import type { createClient } from "@/lib/supabase/server";
 type DB = Awaited<ReturnType<typeof createClient>>;
 export const SOURCES = {
   work_items: "Work items", site_tasks: "Site tasks", purchases: "Purchases",
-  submittals: "Submittals", contracts: "Contracts", vendors: "Vendors & contractors",
+  submittals: "Submittals", meetings: "Meetings", contracts: "Contracts", vendors: "Vendors & contractors",
 } as const;
 export type Source = keyof typeof SOURCES;
 
@@ -81,6 +82,11 @@ export async function loadSource(supabase: DB, me: Me, source: Source, projectId
       const db = await withCustomFields(supabase, "submittals", submittalColumns(all), rows);
       const can = ["management", "site_ops", "tendering", "procurement"].includes(me.role);
       return { table: "submittals", titleKey: "title", ...db, editable: can, creatable: can && !all, createDefaults: defaults, fieldsTable: mgr ? "submittals" : undefined };
+    }
+    case "meetings": {
+      const can = ["management", "site_ops", "tendering"].includes(me.role);
+      return { table: "meetings", titleKey: "title", columns: meetingColumns(all), rows: await loadMeetings(supabase, projectId), href: "/meetings/:id",
+        editable: can, creatable: can && !all, createDefaults: defaults };
     }
     case "contracts": {
       const { data } = await scope(supabase.from("contract_summary").select("*")).order("created_at", { ascending: false });

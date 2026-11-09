@@ -7,7 +7,7 @@ export function ProjectHeader({ id, name, code, current, internal }: {
   const tabs = [
     ["overview", "Overview", `/projects/${id}`],
     ["work-items", "Work items", `/projects/${id}/work-items`],
-    ...(internal ? [["tasks", "Site tasks", `/projects/${id}/tasks`], ["purchasing", "Purchasing", `/projects/${id}/purchasing`]] : []),
+    ...(internal ? [["tasks", "Site tasks", `/projects/${id}/tasks`], ["meetings", "Meetings", `/projects/${id}/meetings`], ["purchasing", "Purchasing", `/projects/${id}/purchasing`]] : []),
     ["submittals", "Submittals", `/submittals?project=${id}`],
     ["timeline", "Timeline", `/projects/${id}/timeline`],
   ];

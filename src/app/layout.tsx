@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 type Sub = { href: string; label: string; roles?: Role[] };
 const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: string; children?: Sub[] }[] = [
   { href: "/", label: "My projects", icon: "home", roles: ["client", "consultant"] },
+  { href: "/actions-tracker", label: "Action tracker", icon: "check", roles: ["client", "consultant"] },
   { href: "/management", label: "Management", icon: "home", roles: ["management"], group: "Departments", children: [
     { href: "/management", label: "Overview" },
     { href: "/projects/new", label: "New project" },
@@ -34,6 +35,7 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/operations?view=open", label: "All open tasks" },
     { href: "/operations?view=all", label: "Task history" },
     { href: "/submittals", label: "Submittals" },
+    { href: "/actions-tracker", label: "Client & consultant actions" },
     { href: "/operations#request", label: "Request materials" },
   ] },
   { href: "/procurement", label: "Procurement", icon: "cart", roles: ["management", "procurement"], group: "Departments", children: [
@@ -54,6 +56,7 @@ const projectPages = (id: string, internal: boolean) => [
   { href: `/projects/${id}/work-items`, label: "Work items" },
   ...(internal ? [
     { href: `/projects/${id}/tasks`, label: "Site tasks" },
+    { href: `/projects/${id}/meetings`, label: "Meetings" },
     { href: `/projects/${id}/purchasing`, label: "Purchasing" },
   ] : []),
   { href: `/submittals?project=${id}`, label: "Submittals" },

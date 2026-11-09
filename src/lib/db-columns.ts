@@ -40,6 +40,9 @@ export function taskColumns(people: { id: string; name: string }[], workItems: {
     { key: "status", label: "Status", type: "select", options: opts("site_task_status"), editable: true },
     { key: "priority", label: "Priority", type: "select", options: opts("priority"), editable: true },
     { key: "assigned_to_id", label: "Assigned to", type: "relation", options: rel(people), display: "assignee_name", editable: true },
+    { key: "party", label: "Who acts", type: "select", options: [
+      { value: "beacon", label: "Beacon" }, { value: "client", label: "Client", tone: "warn" },
+      { value: "consultant", label: "Consultant", tone: "info" }, { value: "contractor", label: "Contractor" }], editable: true },
     { key: "work_item_id", label: "Work item", type: "relation", options: rel(workItems), display: "work_item_name", editable: !withProject },
     { key: "planned_start", label: "Planned start", type: "date", editable: true, hidden: true },
     { key: "due", label: "Due", type: "date", editable: true },
@@ -134,5 +137,19 @@ export function peopleColumns(mgmt: boolean): Column[] {
     { key: "phone", label: "Phone", type: "text", editable: true },
     { key: "login", label: "Login", type: "text" },
     { key: "active", label: "Active", type: "checkbox", editable: mgmt },
+  ];
+}
+
+export function meetingColumns(withProject = false): Column[] {
+  return [
+    { key: "title", label: "Meeting", type: "text", editable: true, width: 260 },
+    ...(withProject ? [{ key: "project_name", label: "Project", type: "text" } as Column] : []),
+    { key: "meeting_date", label: "Date", type: "date", editable: true },
+    { key: "kind", label: "Type", type: "select", options: opts("meeting_kind"), editable: true },
+    { key: "location", label: "Location", type: "text", editable: true },
+    { key: "attendees", label: "Attendees", type: "longtext", editable: true, width: 220 },
+    { key: "open_actions", label: "Open actions", type: "number" },
+    { key: "action_count", label: "Actions", type: "number", hidden: true },
+    { key: "notes", label: "Notes", type: "longtext", editable: true, hidden: true },
   ];
 }
