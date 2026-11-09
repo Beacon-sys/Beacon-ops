@@ -9,7 +9,7 @@ export function ProjectHeader({ id, name, code, current, internal }: {
     ["work-items", "Work items", `/projects/${id}/work-items`],
     ...(internal ? [["tasks", "Site tasks", `/projects/${id}/tasks`], ["purchasing", "Purchasing", `/projects/${id}/purchasing`]] : []),
     ["submittals", "Submittals", `/submittals?project=${id}`],
-    ["timeline", "Timeline", `/timeline?project=${id}`],
+    ["timeline", "Timeline", `/projects/${id}/timeline`],
   ];
   return (
     <div className="mb-4">

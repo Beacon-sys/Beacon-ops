@@ -43,6 +43,7 @@ export function taskColumns(people: { id: string; name: string }[], workItems: {
     { key: "work_item_id", label: "Work item", type: "relation", options: rel(workItems), display: "work_item_name", editable: !withProject },
     { key: "planned_start", label: "Planned start", type: "date", editable: true, hidden: true },
     { key: "due", label: "Due", type: "date", editable: true },
+    { key: "started_on", label: "Started on", type: "date", editable: true, hidden: true },
     { key: "done_on", label: "Done on", type: "date", hidden: true },
     { key: "notes", label: "Notes", type: "longtext", editable: true, hidden: true },
   ];

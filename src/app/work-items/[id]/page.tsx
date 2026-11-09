@@ -77,7 +77,7 @@ export default async function WorkItemPage({ params, searchParams }: {
               <tr><td className="text-muted">Actual</td><td>{date(w.actual_start) || "—"}</td><td>{date(w.actual_finish) || "—"}</td></tr>
             </Table>
             <div className="mt-3 flex items-center gap-3 text-sm"><span className="text-muted">Progress</span><Progress v={w.progress} />
-              <Link className="link ml-auto" href={`/timeline?project=${w.project_id}`}>View on timeline</Link></div>
+              <Link className="link ml-auto" href={`/projects/${w.project_id}/timeline`}>View on timeline</Link></div>
           </Card>
 
           <Card title={`Submittals (${subs.length})`} action={<Link className="link text-sm" href={`/submittals?project=${w.project_id}`}>Register</Link>}>

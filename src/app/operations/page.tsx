@@ -46,7 +46,7 @@ export default async function Operations({ searchParams }: { searchParams: Promi
         ))}
       </div>
       <Card><Database id={`ops-tasks:${view}`} table="site_tasks" rows={db.rows} titleKey="task" editable creatable={false}
-        columns={db.columns} fieldsTable="site_tasks" canManageFields={me.role === "management"} initial={{ boardBy: "status", group: "project_name" }} views={["table", "board", "calendar", "list"]} /></Card>
+        columns={db.columns} fieldsTable="site_tasks" canManageFields={me.role === "management"} initial={{ boardBy: "status", group: "project_name" }} views={["table", "board", "timeline", "calendar", "list"]} /></Card>
       <Card title="Request materials" id="request">
         <PurchaseRequestForm projects={projects.data ?? []} workItems={workItems.data ?? []} suppliers={suppliers.data ?? []} back={back} />
       </Card>

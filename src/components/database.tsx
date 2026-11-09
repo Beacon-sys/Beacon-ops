@@ -14,11 +14,12 @@ export type Column = {
   custom?: { id: string; options: string[]; client_visible: boolean };   // management-defined column
 };
 export type Row = Record<string, unknown> & { id: string };
-export type ViewKind = "table" | "board" | "calendar" | "list";
+export type ViewKind = "table" | "board" | "calendar" | "list" | "timeline";
 export type Settings = {
   view: ViewKind; search: string; filters: Filter[]; sort: { key: string; dir: "asc" | "desc" } | null;
   group: string | null; boardBy: string | null; dateBy: string | null; hidden: string[]; month: string;
   widths: Record<string, number>;
+  startBy?: string | null; endBy?: string | null; tlZoom?: "week" | "month" | "quarter";
 };
 
 export type Filter = { key: string; op: "is" | "not" | "contains" | "empty" | "notempty" | "before" | "after"; value: string };
@@ -35,7 +36,7 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
 const egp = new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP", maximumFractionDigits: 0 });
 const fmtDate = (d: string) => new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 
-export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false, onSettingsChange }: {
+export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "timeline", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false, onSettingsChange }: {
   id: string;                     // unique key to remember view settings
   table: string; columns: Column[]; rows: Row[]; titleKey: string;
   href?: string;                  // row page, with :id placeholder
@@ -72,8 +73,8 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     try { const saved = localStorage.getItem(`db:${id}`); if (saved) setS((x) => ({ ...x, ...JSON.parse(saved) })); } catch {}
   }, [id, shared]);
   useEffect(() => {
-    const { view, filters, sort, group, boardBy, dateBy, hidden, widths } = s;
-    const keep = JSON.stringify({ view, filters, sort, group, boardBy, dateBy, hidden, widths });
+    const { view, filters, sort, group, boardBy, dateBy, hidden, widths, startBy, endBy, tlZoom } = s;
+    const keep = JSON.stringify({ view, filters, sort, group, boardBy, dateBy, hidden, widths, startBy, endBy, tlZoom });
     if (!shared) { try { localStorage.setItem(`db:${id}`, JSON.stringify({ ...s, search: "" })); } catch {} return; }
     if (lastSaved.current === null) { lastSaved.current = keep; return; }
     if (keep === lastSaved.current) return;
@@ -512,6 +513,139 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     );
   })() : <p className="text-sm text-muted">Calendar view needs a date column.</p>;
 
+  // ---- timeline: bars from a start date to an end date; drag to move, drag an edge to resize
+  const dateCols = columns.filter((c) => c.type === "date");
+  const guess = (re: RegExp) => dateCols.find((c) => re.test(c.key))?.key ?? null;
+  const tlStart = s.startBy && col(s.startBy) ? s.startBy : guess(/planned_start|start/) ?? firstDate;
+  const tlEnd = s.endBy && col(s.endBy) ? s.endBy : guess(/planned_finish|finish|due|end/) ?? firstDate;
+  const actStart = guess(/actual_start|started_on/), actEnd = guess(/actual_finish|done_on/);
+  const DAY = 86400000;
+  const toDay = (v: unknown) => (v ? Math.floor(Date.parse(String(v).slice(0, 10) + "T00:00:00Z") / DAY) : null);
+  const iso = (d: number) => new Date(d * DAY).toISOString().slice(0, 10);
+  const pxDay = s.tlZoom === "week" ? 32 : s.tlZoom === "quarter" ? 4 : 12;
+  const [drag, setDrag] = useState<{ id: string; mode: "move" | "start" | "end"; x0: number; s0: number; e0: number; ds: number; de: number } | null>(null);
+  const timelineView = (() => {
+    if (!tlStart || !tlEnd) return <p className="text-sm text-muted">Timeline view needs date columns.</p>;
+    const span = (r: Row) => {
+      let a = toDay(val(r, tlStart)), b = toDay(val(r, tlEnd));
+      if (drag && drag.id === r.id) { a = a === null ? null : a + drag.ds; b = b === null ? null : b + drag.de; }
+      if (a === null && b === null) return null;
+      return { a: a ?? b!, b: Math.max(b ?? a!, a ?? b!) };
+    };
+    const today = Math.floor(Date.now() / DAY);
+    const all = shown.flatMap((r) => { const sp = span(r); const x = [sp?.a, sp?.b, toDay(actStart && val(r, actStart)), toDay(actEnd && val(r, actEnd))]; return x.filter((n): n is number => typeof n === "number"); });
+    const d0 = Math.min(today, ...all) - 7, d1 = Math.max(today, ...all) + 21;
+    const width = (d1 - d0 + 1) * pxDay;
+    const x = (d: number) => (d - d0) * pxDay;
+    const months: number[] = [];
+    for (let d = d0; d <= d1; d++) if (new Date(d * DAY).getUTCDate() === 1 || d === d0) months.push(d);
+    const canDrag = editable && !!col(tlStart)?.editable && !!col(tlEnd)?.editable;
+    const begin = (e: React.MouseEvent, r: Row, mode: "move" | "start" | "end") => {
+      if (!canDrag) return;
+      e.preventDefault(); e.stopPropagation();
+      const sp = span(r)!;
+      const st = { id: r.id, mode, x0: e.clientX, s0: sp.a, e0: sp.b, ds: 0, de: 0 };
+      setDrag(st);
+      const move = (ev: MouseEvent) => {
+        const n = Math.round((ev.clientX - st.x0) / pxDay);
+        st.ds = mode === "end" ? 0 : mode === "start" ? Math.min(n, st.e0 - st.s0) : n;
+        st.de = mode === "start" ? 0 : mode === "end" ? Math.max(n, st.s0 - st.e0) : n;
+        setDrag({ ...st });
+      };
+      const up = () => {
+        window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up);
+        setDrag(null);
+        if (!st.ds && !st.de) return;
+        const changes: { id: string; field: string; value: string }[] = [];
+        if (st.ds || val(r, tlStart) === null || val(r, tlStart) === undefined) changes.push({ id: r.id, field: tlStart, value: iso(st.s0 + st.ds) });
+        if (tlEnd !== tlStart && (st.de || !val(r, tlEnd))) changes.push({ id: r.id, field: tlEnd, value: iso(st.e0 + st.de) });
+        setLocal((l) => ({ ...l, [r.id]: { ...l[r.id], ...Object.fromEntries(changes.map((c) => [c.field, c.value])) } }));
+        start(async () => {
+          const res = await bulkUpdate(table, changes);
+          if (res.error) setError(res.error); else setError(null);
+          router.refresh();
+        });
+      };
+      window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+    };
+    const ROW = 36;
+    const list = groups(s.group, shown);
+    return (
+      <div>
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-5 rounded bg-[var(--brand)]/70" /> Planned</span>
+          {actStart && <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-5 rounded bg-[var(--good)]" /> Actual</span>}
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-0.5 bg-[var(--bad)]" /> Today</span>
+          {canDrag && <span>Drag a bar to move it, or its ends to change the start or finish.</span>}
+          <div className="ml-auto flex gap-1">
+            {(["week", "month", "quarter"] as const).map((z) => (
+              <button key={z} onClick={() => setS({ ...s, tlZoom: z })} className={`btn btn-sm ${(s.tlZoom ?? "month") === z ? "btn-primary" : ""}`}>{z[0].toUpperCase() + z.slice(1)}</button>
+            ))}
+          </div>
+        </div>
+        <div className={`flex overflow-hidden rounded-lg border border-line ${fullPage ? "max-h-[calc(100vh-17rem)] overflow-y-auto" : ""}`}>
+          <div className="w-64 shrink-0 border-r border-line bg-surface">
+            <div className="sticky top-0 z-[2] h-8 border-b border-line bg-surface px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-muted">{titleCol.label}</div>
+            {list.map((g) => (
+              <Fragment key={g.key}>
+                {s.group && <div className="truncate bg-[var(--neutral-bg)]/60 px-3 text-xs font-semibold leading-7">{g.label}</div>}
+                {g.rows.map((r) => (
+                  <div key={r.id} style={{ height: ROW }} className="flex items-center truncate border-b border-line px-3 text-sm">
+                    {rowHref(r) ? <Link className="truncate hover:underline" href={rowHref(r)!}>{text(r, titleCol) || "Untitled"}</Link> : <span className="truncate">{text(r, titleCol)}</span>}
+                  </div>
+                ))}
+              </Fragment>
+            ))}
+          </div>
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div style={{ width }} className="relative">
+              <div className="sticky top-0 z-[1] h-8 border-b border-line bg-surface">
+                {months.map((d) => (
+                  <div key={d} style={{ left: x(d) }} className="absolute top-0 h-full border-l border-line px-1.5 py-1.5 text-xs text-muted">
+                    {new Date(d * DAY).toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" })}
+                  </div>
+                ))}
+              </div>
+              <div className="pointer-events-none absolute bottom-0 top-8 z-[1] w-0.5 bg-[var(--bad)]/70" style={{ left: x(today) }} />
+              {list.map((g) => (
+                <Fragment key={g.key}>
+                  {s.group && <div className="h-7 bg-[var(--neutral-bg)]/60" />}
+                  {g.rows.map((r) => {
+                    const sp = span(r);
+                    const as = toDay(actStart && val(r, actStart)), ae = toDay(actEnd && val(r, actEnd));
+                    const done = ["done", "completed", "delivered"].includes(String(val(r, "status") ?? ""));
+                    const late = !done && sp && sp.b < today;
+                    return (
+                      <div key={r.id} style={{ height: ROW }} className="relative border-b border-line">
+                        {months.map((d) => <div key={d} style={{ left: x(d) }} className="absolute inset-y-0 border-l border-line/60" />)}
+                        {sp ? (
+                          <div style={{ left: x(sp.a), width: Math.max(pxDay, (sp.b - sp.a + 1) * pxDay) }} title={`${fmtDate(iso(sp.a))} → ${fmtDate(iso(sp.b))}`}
+                            onMouseDown={(e) => begin(e, r, "move")}
+                            className={`group/bar absolute top-1.5 h-4 rounded ${late ? "bg-[var(--bad)]/60" : done ? "bg-[var(--good)]/60" : "bg-[var(--brand)]/70"} ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}>
+                            {canDrag && <>
+                              <span onMouseDown={(e) => begin(e, r, "start")} className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize rounded-l bg-black/20 opacity-0 group-hover/bar:opacity-100" />
+                              <span onMouseDown={(e) => begin(e, r, "end")} className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize rounded-r bg-black/20 opacity-0 group-hover/bar:opacity-100" />
+                            </>}
+                            {pxDay * (sp.b - sp.a + 1) > 90 && <span className="pointer-events-none block truncate px-1.5 text-[11px] leading-4 text-white">{text(r, titleCol)}</span>}
+                          </div>
+                        ) : canDrag ? (
+                          <button onClick={() => { const st = today; setLocal((l) => ({ ...l, [r.id]: { ...l[r.id], [tlStart]: iso(st), [tlEnd]: iso(st + 6) } }));
+                            start(async () => { const res = await bulkUpdate(table, [{ id: r.id, field: tlStart, value: iso(st) }, ...(tlEnd !== tlStart ? [{ id: r.id, field: tlEnd, value: iso(st + 6) }] : [])]); if (res.error) setError(res.error); router.refresh(); }); }}
+                            style={{ left: x(today) + 4 }} className="absolute top-1.5 rounded border border-dashed border-line px-2 text-[11px] leading-4 text-muted hover:text-fg">+ Add dates</button>
+                        ) : null}
+                        {as !== null && <div style={{ left: x(as), width: Math.max(pxDay, ((ae ?? today) - as + 1) * pxDay) }} className="absolute top-[26px] h-1.5 rounded bg-[var(--good)]" title="Actual" />}
+                      </div>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
   const listView = (
     <ul className="flex flex-col divide-y divide-[var(--line)]">
       {shown.map((r) => (
@@ -532,7 +666,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     });
   };
   const opLabels: Record<Filter["op"], string> = { is: "is", not: "is not", contains: "contains", empty: "is empty", notempty: "is not empty", before: "before", after: "after" };
-  const VIEW_LABEL: Record<ViewKind, string> = { table: "Table", board: "Board", calendar: "Calendar", list: "List" };
+  const VIEW_LABEL: Record<ViewKind, string> = { table: "Table", board: "Board", timeline: "Timeline", calendar: "Calendar", list: "List" };
 
   return (
     <div>
@@ -547,7 +681,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
           {(["filter", "sort", "group", "fields"] as const).map((p) => (
             <button key={p} onClick={() => setPanel(panel === p ? null : p)}
               className={`btn btn-sm ${panel === p ? "btn-primary" : ""}`}>
-              {p === "filter" ? `Filter${s.filters.length ? ` (${s.filters.length})` : ""}` : p === "sort" ? "Sort" : p === "group" ? (s.view === "board" ? "Board by" : s.view === "calendar" ? "Date field" : "Group") : "Fields"}
+              {p === "filter" ? `Filter${s.filters.length ? ` (${s.filters.length})` : ""}` : p === "sort" ? "Sort" : p === "group" ? (s.view === "board" ? "Board by" : s.view === "calendar" ? "Date field" : s.view === "timeline" ? "Dates & group" : "Group") : "Fields"}
             </button>
           ))}
           {creatable && <button onClick={() => addRow()} className="btn btn-sm btn-primary">+ New</button>}
@@ -603,12 +737,23 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                 <select className="input w-48 py-1" value={dateKey ?? ""} onChange={(e) => setS({ ...s, dateBy: e.target.value })}>
                   {columns.filter((c) => c.type === "date").map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
-              ) : (
+              ) : (<>
+                {s.view === "timeline" && <>
+                  <span className="text-xs text-muted">Start</span>
+                  <select className="input w-44 py-1" value={tlStart ?? ""} onChange={(e) => setS({ ...s, startBy: e.target.value })}>
+                    {dateCols.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+                  <span className="text-xs text-muted">End</span>
+                  <select className="input w-44 py-1" value={tlEnd ?? ""} onChange={(e) => setS({ ...s, endBy: e.target.value })}>
+                    {dateCols.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+                  <span className="text-xs text-muted">Group</span>
+                </>}
                 <select className="input w-48 py-1" value={s.group ?? ""} onChange={(e) => setS({ ...s, group: e.target.value || null })}>
                   <option value="">No grouping</option>
                   {columns.filter((c) => ["select", "relation", "text"].includes(c.type)).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
-              )}
+              </>)}
             </div>
           )}
           {panel === "fields" && (
@@ -667,6 +812,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
       {s.view === "board" && boardView}
       {s.view === "calendar" && calendarView}
       {s.view === "list" && listView}
+      {s.view === "timeline" && timelineView}
     </div>
   );
 }

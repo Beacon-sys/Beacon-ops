@@ -33,7 +33,6 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/operations?view=mine", label: "My tasks" },
     { href: "/operations?view=open", label: "All open tasks" },
     { href: "/operations?view=all", label: "Task history" },
-    { href: "/timeline", label: "Timeline" },
     { href: "/submittals", label: "Submittals" },
     { href: "/operations#request", label: "Request materials" },
   ] },
@@ -44,7 +43,6 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
     { href: "/procurement/contracts", label: "Contracts" },
     { href: "/procurement/vendors", label: "Vendors & contractors" },
   ] },
-  { href: "/timeline", label: "Timeline", icon: "chart", roles: ["management", "tendering", "site_ops", "procurement", "accountant", "client", "consultant"], group: "Records" },
   { href: "/submittals", label: "Submittals", icon: "doc", roles: ["management", "tendering", "site_ops", "procurement", "client", "consultant"], group: "Records" },
   { href: "/projects", label: "All projects", icon: "folder", roles: ["management", "tendering", "site_ops", "procurement", "accountant"], group: "Records" },
   { href: "/people", label: "People", icon: "people", roles: ["management", "tendering"], group: "Records" },
@@ -59,7 +57,7 @@ const projectPages = (id: string, internal: boolean) => [
     { href: `/projects/${id}/purchasing`, label: "Purchasing" },
   ] : []),
   { href: `/submittals?project=${id}`, label: "Submittals" },
-  { href: `/timeline?project=${id}`, label: "Timeline" },
+  { href: `/projects/${id}/timeline`, label: "Timeline" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

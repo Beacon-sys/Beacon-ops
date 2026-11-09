@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 const EDITABLE: Record<string, string[]> = {
   work_items: ["name","boq_ref","item_type","category","trade","area","quantity","unit","beacon_rate","status","progress",
     "planned_start","planned_finish","actual_start","actual_finish","visible_to_client","notes"],
-  site_tasks: ["task","type","assigned_to_id","planned_start","due","priority","status","notes","work_item_id"],
+  site_tasks: ["task","type","assigned_to_id","planned_start","started_on","due","priority","status","notes","work_item_id"],
   purchases: ["request","needed_by","quantity","unit","supplier_id","po_number","amount","status","payment_status","invoice_no","notes","work_item_id"],
   submittals: ["number","title","kind","revision","status","submitted_on","due_back","returned_on","link","notes"],
   people: ["name","company","role","active","vendor_category","contact_person","phone","email","payment_terms","rating","notes"],

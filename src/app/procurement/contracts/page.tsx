@@ -37,7 +37,7 @@ export default async function Contracts({ searchParams }: { searchParams: Promis
       </form>
       <Card>
         <Database id={`contracts:${sp.project ?? "all"}`} table="contracts" rows={dbRows} columns={contractColumns()} titleKey="title"
-          href="/procurement/contracts/:id" editable={canEdit} creatable={false} initial={{ group: sp.project ? null : "project_name" }} views={["table", "board", "calendar", "list"]} />
+          href="/procurement/contracts/:id" editable={canEdit} creatable={false} initial={{ group: sp.project ? null : "project_name" }} views={["table", "board", "timeline", "calendar", "list"]} />
       </Card>
       {canEdit && (
         <Card title="New contract" id="new">
