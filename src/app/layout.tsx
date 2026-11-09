@@ -73,6 +73,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const projects = role
     ? (await supabase.from("projects").select("id,name,status").neq("status", "closed").order("name").limit(20)).data ?? []
     : [];
+  const pages = role && INTERNAL.includes(role)
+    ? (await supabase.from("pages").select("id,parent_id,title,icon").order("position")).data ?? []
+    : undefined;
 
   return (
     <html lang="en">
@@ -90,6 +93,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               name={me?.name ?? user.email ?? ""}
               roleLabel={role ? LABELS.role[role] : ""}
               signOut={signOut}
+              pages={pages}
             />
             </Suspense>
             <main className="px-4 py-8 md:ml-60 md:px-8">

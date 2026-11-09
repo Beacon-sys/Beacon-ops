@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { createPage } from "@/app/page-actions";
+
+export type PageItem = { id: string; parent_id: string | null; title: string; icon: string | null };
 
 export type SubItem = { href: string; label: string; children?: SubItem[] };
 export type NavItem = { href: string; label: string; icon: string; group?: string; children?: SubItem[] };
@@ -25,8 +28,8 @@ function Icon({ name }: { name: string }) {
   );
 }
 
-export function Sidebar({ items, name, roleLabel, signOut }: {
-  items: NavItem[]; name: string; roleLabel: string; signOut: () => Promise<void>;
+export function Sidebar({ items, name, roleLabel, signOut, pages }: {
+  items: NavItem[]; name: string; roleLabel: string; signOut: () => Promise<void>; pages?: PageItem[];
 }) {
   const path = usePathname();
   const search = useSearchParams();
@@ -119,6 +122,38 @@ export function Sidebar({ items, name, roleLabel, signOut }: {
       })}
     </nav>
   );
+  // User-made pages, nested like Notion. A page is open while it or a page inside it is showing.
+  const currentPage = path.startsWith("/pages/") ? path.split("/")[2] : null;
+  const ancestors = new Set<string>();
+  for (let cur = pages?.find((p) => p.id === currentPage); cur?.parent_id; cur = pages?.find((p) => p.id === cur!.parent_id)) ancestors.add(cur.parent_id);
+  const pageOpen = (id: string) => expanded[`page:${id}`] ?? ancestors.has(id);
+  const pageTree = (parent: string | null, depth: number): React.ReactNode =>
+    (pages ?? []).filter((p) => p.parent_id === parent).map((p) => {
+      const kids = (pages ?? []).some((x) => x.parent_id === p.id);
+      return (
+        <div key={p.id}>
+          <div style={{ paddingLeft: depth * 12 }}
+            className={`flex items-center rounded-md ${currentPage === p.id ? "bg-[var(--info-bg)] text-[var(--brand)]" : "text-muted hover:bg-[var(--neutral-bg)] hover:text-fg"}`}>
+            <button type="button" aria-label={pageOpen(p.id) ? "Collapse" : "Expand"} onClick={() => setExpanded({ ...expanded, [`page:${p.id}`]: !pageOpen(p.id) })}
+              className={`rounded p-1 ${kids ? "" : "invisible"}`}>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+                aria-hidden="true" className={`transition-transform ${pageOpen(p.id) ? "rotate-90" : ""}`}><path d="m9 6 6 6-6 6" /></svg>
+            </button>
+            <Link href={`/pages/${p.id}`} onClick={() => setOpen(false)} className="flex-1 truncate py-1.5 pr-2 text-[13px]">{p.icon ?? "📄"} {p.title}</Link>
+          </div>
+          {kids && pageOpen(p.id) && pageTree(p.id, depth + 1)}
+        </div>
+      );
+    });
+  const pagesNav = pages && (
+    <div>
+      <div className="mb-1 mt-4 flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide text-muted">
+        <Link href="/pages" className="hover:text-fg">Pages</Link>
+        <form action={createPage}><button title="New page" className="rounded px-1.5 text-base leading-none hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></form>
+      </div>
+      {pages.length ? pageTree(null, 0) : <form action={createPage}><button className="px-3 py-1.5 text-[13px] text-muted hover:text-fg">+ New page</button></form>}
+    </div>
+  );
   const footer = (
     <div className="border-t border-line pt-4 text-sm">
       <div className="font-medium">{name}</div>
@@ -137,7 +172,7 @@ export function Sidebar({ items, name, roleLabel, signOut }: {
       {open && (
         <div className="fixed inset-0 z-10 bg-black/30 md:hidden" onClick={() => setOpen(false)}>
           <div className="flex h-full w-72 flex-col justify-between overflow-y-auto bg-surface p-4 pt-16" onClick={(e) => e.stopPropagation()}>
-            {nav}{footer}
+            <div>{nav}{pagesNav}</div>{footer}
           </div>
         </div>
       )}
@@ -146,6 +181,7 @@ export function Sidebar({ items, name, roleLabel, signOut }: {
         <div className="-mr-2 overflow-y-auto pr-2">
           <Link href="/" className="mb-6 block px-3 pt-1 text-lg font-semibold tracking-tight">Beacon Operations</Link>
           {nav}
+          {pagesNav}
         </div>
         {footer}
       </aside>

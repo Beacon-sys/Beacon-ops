@@ -15,13 +15,13 @@ export type Column = {
 };
 export type Row = Record<string, unknown> & { id: string };
 export type ViewKind = "table" | "board" | "calendar" | "list";
-
-type Filter = { key: string; op: "is" | "not" | "contains" | "empty" | "notempty" | "before" | "after"; value: string };
-type Settings = {
+export type Settings = {
   view: ViewKind; search: string; filters: Filter[]; sort: { key: string; dir: "asc" | "desc" } | null;
   group: string | null; boardBy: string | null; dateBy: string | null; hidden: string[]; month: string;
   widths: Record<string, number>;
 };
+
+export type Filter = { key: string; op: "is" | "not" | "contains" | "empty" | "notempty" | "before" | "after"; value: string };
 
 const TONES: Record<string, string> = {
   done: "good", delivered: "good", paid: "good", approved: "good", approved_as_noted: "good", completed: "good", signed: "info",
@@ -35,7 +35,7 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
 const egp = new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP", maximumFractionDigits: 0 });
 const fmtDate = (d: string) => new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 
-export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false }: {
+export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false, onSettingsChange }: {
   id: string;                     // unique key to remember view settings
   table: string; columns: Column[]; rows: Row[]; titleKey: string;
   href?: string;                  // row page, with :id placeholder
@@ -43,6 +43,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   views?: ViewKind[]; initial?: Partial<Settings>;
   fieldsTable?: string; canManageFields?: boolean;   // management may add columns
   fullPage?: boolean;   // own page: taller grid with a sticky header
+  onSettingsChange?: (settings: Record<string, unknown>) => void;   // shared views: save settings for everyone
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -63,10 +64,22 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   });
 
   // Remember each person's view settings per database.
+  // Shared views (on pages) save their settings for everyone; other databases remember them per person.
+  const shared = !!onSettingsChange;
+  const lastSaved = useRef<string | null>(null);
   useEffect(() => {
+    if (shared) return;
     try { const saved = localStorage.getItem(`db:${id}`); if (saved) setS((x) => ({ ...x, ...JSON.parse(saved) })); } catch {}
-  }, [id]);
-  useEffect(() => { try { localStorage.setItem(`db:${id}`, JSON.stringify({ ...s, search: "" })); } catch {} }, [id, s]);
+  }, [id, shared]);
+  useEffect(() => {
+    const { view, filters, sort, group, boardBy, dateBy, hidden, widths } = s;
+    const keep = JSON.stringify({ view, filters, sort, group, boardBy, dateBy, hidden, widths });
+    if (!shared) { try { localStorage.setItem(`db:${id}`, JSON.stringify({ ...s, search: "" })); } catch {} return; }
+    if (lastSaved.current === null) { lastSaved.current = keep; return; }
+    if (keep === lastSaved.current) return;
+    const t = setTimeout(() => { lastSaved.current = keep; onSettingsChange?.(JSON.parse(keep)); }, 700);
+    return () => clearTimeout(t);
+  }, [id, s, shared, onSettingsChange]);
 
   const col = (k: string) => columns.find((c) => c.key === k);
   const val = (r: Row, k: string) => (local[r.id] && k in local[r.id] ? local[r.id][k] : r[k]);
