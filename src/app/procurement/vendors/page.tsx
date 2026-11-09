@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { requireMe, allowed, money, date, LABELS } from "@/lib/data";
-import { PageTitle, Card, Table, Field, Badge } from "@/components/ui";
+import { requireMe, allowed, LABELS } from "@/lib/data";
+import { Database, type Row as DbRow } from "@/components/database";
+import { vendorColumns } from "@/lib/db-columns";
+import { PageTitle, Card, Field } from "@/components/ui";
 import { saveVendor } from "@/app/actions";
 import { ErrorNote } from "@/components/error-note";
 
@@ -29,6 +31,11 @@ export default async function Vendors({ searchParams }: {
   ]);
   const vendors = (data ?? []) as Vendor[];
   const sum = new Map(((sums ?? []) as Summary[]).map((s) => [s.id, s]));
+  const dbRows = vendors.map((v) => {
+    const x = sum.get(v.id);
+    return { ...v, rating: v.rating ? String(v.rating) : null, trades_text: (v.trades ?? []).map((t) => LABELS.trade[t as keyof typeof LABELS.trade] ?? t).join(", "),
+      orders: x?.orders ?? 0, ordered_value: x?.ordered_value ?? 0, last_order: x?.last_order ?? null };
+  }) as unknown as DbRow[];
   const link = (k: string, v?: string) => {
     const p = new URLSearchParams({ ...(sp.type ? { type: sp.type } : {}), ...(sp.trade ? { trade: sp.trade } : {}), ...(sp.q ? { q: sp.q } : {}) });
     if (v) p.set(k, v); else p.delete(k);
@@ -57,43 +64,10 @@ export default async function Vendors({ searchParams }: {
       </div>
 
       <Card>
-        <Table head={["Name", "Type", "Category / trades", "Contact", "Terms", "Rating", "Orders", "Ordered", "Last order", ""]} empty={!vendors.length}>
-          {vendors.map((v) => {
-            const s = sum.get(v.id);
-            return (
-              <tr key={v.id} className={v.active ? "" : "opacity-50"}>
-                <td><Link className="link font-medium" href={`/procurement/vendors/${v.id}`}>{v.name}</Link>{v.company && v.company !== v.name && <div className="text-xs text-muted">{v.company}</div>}</td>
-                <td><span className={`badge ${v.role === "contractor" ? "badge-info" : "badge-neutral"}`}>{LABELS.role[v.role as "supplier"]}</span></td>
-                <td>
-                  <div>{v.vendor_category}</div>
-                  <div className="mt-1 flex flex-wrap gap-1">{(v.trades ?? []).map((t) => <Badge key={t} set="trade" value={t} />)}</div>
-                </td>
-                <td className="text-xs">
-                  <div className="text-sm">{v.contact_person}</div>
-                  {v.phone && <div><a className="link" href={`tel:${v.phone}`}>{v.phone}</a></div>}
-                  {v.email && <div><a className="link" href={`mailto:${v.email}`}>{v.email}</a></div>}
-                </td>
-                <td>{v.payment_terms}</td>
-                <td className="whitespace-nowrap text-[var(--warn)]" aria-label={v.rating ? `${v.rating} out of 5` : "Not rated"}>
-                  {v.rating ? "★".repeat(v.rating) + "☆".repeat(5 - v.rating) : <span className="text-muted">—</span>}
-                </td>
-                <td className="tabular-nums">{s?.orders ?? 0}</td>
-                <td className="tabular-nums">{money(s?.ordered_value ?? 0)}</td>
-                <td>{date(s?.last_order)}</td>
-                <td className="text-right">
-                  {canEdit && (
-                    <details className="relative inline-block text-left">
-                      <summary className="btn btn-sm list-none">Edit</summary>
-                      <div className="absolute right-0 z-10 mt-1 w-[min(90vw,560px)] rounded-xl border border-line bg-surface p-4 shadow-lg">
-                        <VendorForm vendor={v} />
-                      </div>
-                    </details>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </Table>
+        <Database id="vendors" table="people" rows={dbRows} columns={vendorColumns()} titleKey="name" href="/procurement/vendors/:id"
+          editable={canEdit} createDefaults={{ role: sp.type === "contractor" ? "contractor" : "supplier" }} views={["table", "board", "list"]}
+          initial={{ boardBy: "role" }} />
+        <p className="mt-2 text-xs text-muted">Trades, tax and register numbers and the address are edited on each vendor&apos;s page.</p>
       </Card>
 
       {canEdit && <Card title="Add a vendor or contractor" id="add"><VendorForm /></Card>}

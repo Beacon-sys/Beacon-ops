@@ -10,7 +10,7 @@ const EDITABLE: Record<string, string[]> = {
   site_tasks: ["task","type","assigned_to_id","planned_start","due","priority","status","notes","work_item_id"],
   purchases: ["request","needed_by","quantity","unit","supplier_id","po_number","amount","status","payment_status","invoice_no","notes","work_item_id"],
   submittals: ["number","title","kind","revision","status","submitted_on","due_back","returned_on","link","notes"],
-  people: ["name","company","vendor_category","contact_person","phone","email","payment_terms","rating","notes"],
+  people: ["name","company","role","active","vendor_category","contact_person","phone","email","payment_terms","rating","notes"],
   contracts: ["number","title","status","start_date","finish_date","retention_pct","link","notes"],
 };
 const CREATE_EXTRA: Record<string, string[]> = {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-export type SubItem = { href: string; label: string };
+export type SubItem = { href: string; label: string; children?: SubItem[] };
 export type NavItem = { href: string; label: string; icon: string; group?: string; children?: SubItem[] };
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -40,13 +40,24 @@ export function Sidebar({ items, name, roleLabel, signOut }: {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const isOpen = (n: NavItem) => expanded[n.href] ?? inSection(n);
 
-  // A sub-link is current when its path and any ?view= match the page.
+  // A sub-link is current when its path and every query value it names match the page.
   const subActive = (href: string) => {
     const [base, query] = href.split("#")[0].split("?");
     if (base !== path) return false;
-    const want = new URLSearchParams(query ?? "").get("view");
-    return want ? search.get("view") === want : !href.includes("#") && !search.get("view");
+    const want = [...new URLSearchParams(query ?? "").entries()];
+    return want.length ? want.every(([k, v]) => search.get(k) === v) : !href.includes("#") && !search.get("view");
   };
+  // A project entry is open while any of its pages is showing.
+  const inProject = (c: SubItem) => {
+    const pid = c.href.split("/")[2];
+    return path === c.href || path.startsWith(c.href + "/") || (!!pid && search.get("project") === pid);
+  };
+  const subOpen = (c: SubItem) => expanded[c.href] ?? inProject(c);
+  const chevron = (open: boolean) => (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      className={`transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+  );
 
   const nav = (
     <nav className="flex flex-col gap-0.5">
@@ -75,7 +86,27 @@ export function Sidebar({ items, name, roleLabel, signOut }: {
             </div>
             {kids.length > 0 && isOpen(n) && (
               <div className="mb-1 ml-[1.35rem] mt-0.5 flex flex-col border-l border-line pl-3">
-                {kids.map((c) => (
+                {kids.map((c) => c.children?.length ? (
+                  <div key={c.href}>
+                    <div className={`flex items-center rounded-md ${inProject(c) ? "text-[var(--brand)]" : "text-muted hover:text-fg"}`}>
+                      <Link href={c.href} onClick={() => setOpen(false)}
+                        className={`flex-1 truncate px-2 py-1.5 text-[13px] ${inProject(c) ? "font-medium" : ""}`}>{c.label}</Link>
+                      <button type="button" aria-label={`${subOpen(c) ? "Hide" : "Show"} ${c.label} pages`} aria-expanded={subOpen(c)}
+                        onClick={() => setExpanded({ ...expanded, [c.href]: !subOpen(c) })}
+                        className="rounded-md p-1 hover:bg-[var(--neutral-bg)]">{chevron(subOpen(c))}</button>
+                    </div>
+                    {subOpen(c) && (
+                      <div className="mb-1 ml-2 flex flex-col border-l border-line pl-2">
+                        {c.children.map((g) => (
+                          <Link key={g.href} href={g.href} onClick={() => setOpen(false)}
+                            className={`truncate rounded-md px-2 py-1 text-[12.5px] ${subActive(g.href) ? "font-medium text-[var(--brand)]" : "text-muted hover:text-fg"}`}>
+                            {g.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <Link key={c.href} href={c.href} onClick={() => setOpen(false)}
                     className={`truncate rounded-md px-2 py-1.5 text-[13px] ${subActive(c.href) ? "font-medium text-[var(--brand)]" : "text-muted hover:text-fg"}`}>
                     {c.label}

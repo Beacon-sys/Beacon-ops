@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
-import { LABELS, type Role } from "@/lib/data";
+import { LABELS, INTERNAL, type Role } from "@/lib/data";
 import { signOut } from "./login/actions";
 import { Sidebar } from "@/components/sidebar";
 
@@ -50,6 +50,18 @@ const NAV: { href: string; label: string; icon: string; roles: Role[]; group?: s
   { href: "/people", label: "People", icon: "people", roles: ["management", "tendering"], group: "Records" },
 ];
 
+// Sub-pages listed under each project in the sidebar.
+const projectPages = (id: string, internal: boolean) => [
+  { href: `/projects/${id}`, label: "Overview" },
+  { href: `/projects/${id}/work-items`, label: "Work items" },
+  ...(internal ? [
+    { href: `/projects/${id}/tasks`, label: "Site tasks" },
+    { href: `/projects/${id}/purchasing`, label: "Purchasing" },
+  ] : []),
+  { href: `/submittals?project=${id}`, label: "Submittals" },
+  { href: `/timeline?project=${id}`, label: "Timeline" },
+];
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -72,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               items={role ? NAV.filter((n) => n.roles.includes(role)).map(({ href, label, icon, group, children }) => ({
                 href, label, icon, group,
                 children: href === "/projects" || href === "/"
-                  ? projects.map((p) => ({ href: `/projects/${p.id}`, label: p.name }))
+                  ? projects.map((p) => ({ href: `/projects/${p.id}`, label: p.name, children: projectPages(p.id, INTERNAL.includes(role)) }))
                   : children?.filter((c) => !c.roles || c.roles.includes(role)).map(({ href, label }) => ({ href, label })),
               })) : []}
               name={me?.name ?? user.email ?? ""}
@@ -81,7 +93,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
             </Suspense>
             <main className="px-4 py-8 md:ml-60 md:px-8">
-              <div className="mx-auto max-w-6xl">{children}</div>
+              <div className="mx-auto max-w-6xl has-[.full-bleed]:max-w-none">{children}</div>
             </main>
           </>
         ) : (

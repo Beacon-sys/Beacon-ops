@@ -2,24 +2,27 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireMe, allowed, money } from "@/lib/data";
 import { PageTitle, Card, Table, Stat, Badge } from "@/components/ui";
-import { PurchaseTable, PURCHASE_SELECT, type PurchaseRow } from "@/components/purchase-table";
+import { Database, type Row } from "@/components/database";
+import { purchaseColumns } from "@/lib/db-columns";
+import { withCustomFields } from "@/lib/custom-fields";
+import { PURCHASE_ROWS, purchaseRow } from "@/lib/project-db";
 import { ErrorNote } from "@/components/error-note";
 
 export default async function Accounting({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { supabase, me } = await requireMe();
   if (!allowed(me.role, ["accountant"])) redirect("/");
   const { error } = await searchParams;
-  const back = "/accounting";
 
   const [toPay, projects, suppliers] = await Promise.all([
-    supabase.from("purchases").select(PURCHASE_SELECT)
+    supabase.from("purchases").select(PURCHASE_ROWS)
       .in("status", ["po_issued", "delivered"]).neq("payment_status", "paid")
       .order("needed_by", { nullsFirst: false }),
     supabase.from("project_summary").select("id,name,code,status,contract_value,committed_spend,paid_to_date")
       .neq("status", "closed").order("name"),
     supabase.from("people").select("id,name").in("role", ["supplier", "contractor"]).order("name"),
   ]);
-  const rows = (toPay.data ?? []) as unknown as PurchaseRow[];
+  const rows = ((toPay.data ?? []) as Record<string, unknown>[]).map(purchaseRow) as Row[];
+  const db = await withCustomFields(supabase, "purchases", purchaseColumns(me.role, suppliers.data ?? [], [], true), rows);
   const owed = rows.reduce((s, r) => s + Number(r.amount ?? 0), 0);
   const ps = projects.data ?? [];
   const sum = (k: "contract_value" | "committed_spend" | "paid_to_date") => ps.reduce((s, p) => s + Number(p[k] ?? 0), 0);
@@ -35,7 +38,8 @@ export default async function Accounting({ searchParams }: { searchParams: Promi
         <Stat label="Paid to date" value={money(sum("paid_to_date"))} />
       </div>
       <Card title="To pay">
-        <PurchaseTable rows={rows} role={me.role} suppliers={suppliers.data ?? []} back={back} />
+        <Database id="accounting:to-pay" table="purchases" rows={db.rows} columns={db.columns} titleKey="request" editable creatable={false}
+          fieldsTable="purchases" canManageFields={me.role === "management"} views={["table", "calendar"]} />
       </Card>
       <Card title="Project finances" id="finances">
         <Table head={["Project", "Status", "Contract", "Committed", "Paid", "Still to pay"]} empty={!ps.length}>

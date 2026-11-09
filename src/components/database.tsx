@@ -20,6 +20,7 @@ type Filter = { key: string; op: "is" | "not" | "contains" | "empty" | "notempty
 type Settings = {
   view: ViewKind; search: string; filters: Filter[]; sort: { key: string; dir: "asc" | "desc" } | null;
   group: string | null; boardBy: string | null; dateBy: string | null; hidden: string[]; month: string;
+  widths: Record<string, number>;
 };
 
 const TONES: Record<string, string> = {
@@ -34,13 +35,14 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
 const egp = new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP", maximumFractionDigits: 0 });
 const fmtDate = (d: string) => new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 
-export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "calendar", "list"], initial, fieldsTable, canManageFields = false }: {
+export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false }: {
   id: string;                     // unique key to remember view settings
   table: string; columns: Column[]; rows: Row[]; titleKey: string;
   href?: string;                  // row page, with :id placeholder
   editable: boolean; creatable?: boolean; createDefaults?: Record<string, string | number | boolean | null>;
   views?: ViewKind[]; initial?: Partial<Settings>;
   fieldsTable?: string; canManageFields?: boolean;   // management may add columns
+  fullPage?: boolean;   // own page: taller grid with a sticky header
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -57,7 +59,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   const firstDate = columns.find((c) => c.type === "date")?.key ?? null;
   const [s, setS] = useState<Settings>({
     view: "table", search: "", filters: [], sort: null, group: null, boardBy: firstSelect, dateBy: firstDate,
-    hidden: columns.filter((c) => c.hidden).map((c) => c.key), month: new Date().toISOString().slice(0, 7), ...initial,
+    hidden: columns.filter((c) => c.hidden).map((c) => c.key), month: new Date().toISOString().slice(0, 7), widths: {}, ...initial,
   });
 
   // Remember each person's view settings per database.
@@ -178,6 +180,15 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     }
   };
   const canEditCell = (c: Column) => editable && !!c.editable;
+  const DEFAULT_W: Record<string, number> = { text: 150, longtext: 240, number: 90, money: 130, date: 130, select: 160, relation: 170, checkbox: 80, progress: 130, url: 90 };
+  const widthOf = (c: Column) => s.widths?.[c.key] ?? c.width ?? (c.key === titleKey ? 300 : DEFAULT_W[c.type] ?? 140);
+  const startResize = (e: React.MouseEvent, c: Column) => {
+    e.preventDefault(); e.stopPropagation();
+    const x0 = e.clientX, w0 = widthOf(c);
+    const onMove = (ev: MouseEvent) => setS((x) => ({ ...x, widths: { ...x.widths, [c.key]: Math.max(60, w0 + ev.clientX - x0) } }));
+    const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
+  };
 
   // Spreadsheet navigation: the rows in the order they are shown, and the visible columns.
   const flat = s.view === "table" ? groups(s.group, shown).flatMap((g) => (collapsed[g.key] ? [] : g.rows)) : shown;
@@ -321,24 +332,27 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   // ---- views
   const tableView = (
     <div>
-      <div ref={gridRef} tabIndex={0} onKeyDown={onGridKey} onPaste={onPaste} className="-mx-4 overflow-x-auto outline-none">
-        <table className="w-full text-sm">
+      <div ref={gridRef} tabIndex={0} onKeyDown={onGridKey} onPaste={onPaste}
+        className={`overflow-auto outline-none ${fullPage ? "max-h-[calc(100vh-15rem)] rounded-lg border border-line bg-surface" : "-mx-4"}`}>
+        <table className="text-sm" style={{ tableLayout: "fixed", width: visibleCols.reduce((t, c) => t + widthOf(c), 0) + 40, minWidth: "100%" }}>
           <thead>
-            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+            <tr className="text-left text-xs uppercase tracking-wide text-muted">
               {visibleCols.map((c) => (
-                <th key={c.key} style={{ minWidth: c.width ?? (c.key === titleKey ? 260 : 110) }}
-                  className={`group/h cursor-pointer select-none whitespace-nowrap px-3 py-2 font-medium hover:text-fg ${["number", "money"].includes(c.type) ? "text-right" : ""}`}
+                <th key={c.key} style={{ width: widthOf(c) }}
+                  className={`group/h sticky top-0 z-[1] cursor-pointer select-none truncate border-b border-line bg-surface px-3 py-2 font-medium hover:text-fg ${["number", "money"].includes(c.type) ? "text-right" : ""}`}
                   onClick={() => setS({ ...s, sort: s.sort?.key === c.key ? (s.sort.dir === "asc" ? { key: c.key, dir: "desc" } : null) : { key: c.key, dir: "asc" } })}>
                   {c.label}{s.sort?.key === c.key ? (s.sort.dir === "asc" ? " ↑" : " ↓") : ""}
                   {canManageFields && c.custom && (
                     <button title="Edit column" className="ml-1 rounded px-1 normal-case text-muted opacity-0 hover:bg-[var(--neutral-bg)] group-hover/h:opacity-100"
                       onClick={(e) => { e.stopPropagation(); setPanel(null); setFieldForm({ id: c.custom!.id, label: c.label, type: c.type, options: c.custom!.options.join(", "), client_visible: c.custom!.client_visible }); }}>⋯</button>
                   )}
+                  <span title="Drag to resize" onMouseDown={(e) => startResize(e, c)} onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[var(--brand)]/40" />
                 </th>
               ))}
               {canManageFields
-                ? <th className="w-10 px-1"><button title="Add a column" onClick={() => { setPanel(null); setFieldForm(newField); }} className="rounded px-2 py-0.5 text-base text-muted hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></th>
-                : editable && <th className="w-8" />}
+                ? <th className="sticky top-0 z-[1] w-10 border-b border-line bg-surface px-1"><button title="Add a column" onClick={() => { setPanel(null); setFieldForm(newField); }} className="rounded px-2 py-0.5 text-base text-muted hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></th>
+                : <th className="sticky top-0 z-[1] w-10 border-b border-line bg-surface" />}
             </tr>
           </thead>
           <tbody>
@@ -358,7 +372,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                   {i === 0 ? `${shown.length} ${shown.length === 1 ? "row" : "rows"}` : c.sum ? (c.type === "money" ? egp.format(shown.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0)) : shown.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0).toLocaleString()) : ""}
                 </td>
               ))}
-              {(editable || canManageFields) && <td />}
+              <td />
             </tr>
           </tbody>
         </table>
@@ -389,11 +403,15 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
               const isEditing = editing?.row === r.id && editing.key === c.key;
               return (
                 <td key={c.key} className={`px-3 py-1 ${here && !isEditing ? "outline outline-2 -outline-offset-2 outline-[var(--brand)]" : ""}`}
-                  onClick={() => { if (!isEditing) { setSel({ row: r.id, key: c.key }); gridRef.current?.focus({ preventScroll: true }); } }}
+                  onClick={() => {
+                    if (isEditing) return;
+                    if (here && canEditCell(c)) { startEdit(r, c); return; }
+                    setSel({ row: r.id, key: c.key }); gridRef.current?.focus({ preventScroll: true });
+                  }}
                   onDoubleClick={() => startEdit(r, c)}>
                   {isEditing ? editor(r, c, val(r, c.key), editing?.seed) : (
                     <div className="flex items-start gap-1">
-                      <div className={`min-h-[1.75rem] flex-1 rounded px-1 py-0.5 ${canEditCell(c) ? "cursor-cell" : ""} ${["number", "money"].includes(c.type) ? "text-right" : ""}`}>{display(r, c)}</div>
+                      <div className={`min-h-[1.75rem] min-w-0 flex-1 break-words rounded px-1 py-0.5 ${canEditCell(c) ? "cursor-cell" : ""} ${["number", "money"].includes(c.type) ? "text-right" : ""}`}>{display(r, c)}</div>
                       {c.key === titleKey && rowHref(r) && <Link href={rowHref(r)!} title="Open as page" onClick={(e) => e.stopPropagation()}
                         className="invisible mt-0.5 shrink-0 rounded border border-line px-1.5 text-xs text-muted hover:text-fg group-hover:visible">Open</Link>}
                     </div>

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { requireMe, allowed, money, date } from "@/lib/data";
-import { PageTitle, Card, Table, Badge, Progress } from "@/components/ui";
+import { requireMe, allowed } from "@/lib/data";
+import { Database, type Row as DbRow } from "@/components/database";
+import { contractColumns } from "@/lib/db-columns";
+import { PageTitle, Card } from "@/components/ui";
 import { ContractForm } from "@/components/contract-form";
 import { ErrorNote } from "@/components/error-note";
 
@@ -21,6 +22,7 @@ export default async function Contracts({ searchParams }: { searchParams: Promis
   type Row = { id: string; number: string | null; title: string; status: string; start_date: string | null; finish_date: string | null;
     item_count: number; contract_value: number; progress: number | null; project: { name: string } | null; vendor: { name: string } | null };
   const rows = (data ?? []) as unknown as Row[];
+  const dbRows = rows.map((c) => ({ ...c, vendor_name: c.vendor?.name, project_name: c.project?.name })) as DbRow[];
 
   return (
     <>
@@ -34,21 +36,8 @@ export default async function Contracts({ searchParams }: { searchParams: Promis
         <button className="btn btn-sm">Filter</button>
       </form>
       <Card>
-        <Table head={["Contract", "Contractor", "Project", "Items", "Value", "Start", "Finish", "Progress", "Status"]} empty={!rows.length}>
-          {rows.map((c) => (
-            <tr key={c.id}>
-              <td><Link className="link" href={`/procurement/contracts/${c.id}`}>{c.number ? `${c.number} · ` : ""}{c.title}</Link></td>
-              <td>{c.vendor?.name}</td>
-              <td className="text-muted">{c.project?.name}</td>
-              <td className="tabular-nums">{c.item_count}</td>
-              <td className="tabular-nums">{money(c.contract_value)}</td>
-              <td>{date(c.start_date)}</td>
-              <td>{date(c.finish_date)}</td>
-              <td><Progress v={c.progress} /></td>
-              <td><Badge set="contract_status" value={c.status} /></td>
-            </tr>
-          ))}
-        </Table>
+        <Database id={`contracts:${sp.project ?? "all"}`} table="contracts" rows={dbRows} columns={contractColumns()} titleKey="title"
+          href="/procurement/contracts/:id" editable={canEdit} creatable={false} initial={{ group: sp.project ? null : "project_name" }} views={["table", "board", "calendar", "list"]} />
       </Card>
       {canEdit && (
         <Card title="New contract" id="new">

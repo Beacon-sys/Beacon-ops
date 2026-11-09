@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireMe, allowed } from "@/lib/data";
 import { PageTitle, Card } from "@/components/ui";
-import { PurchaseTable, PURCHASE_SELECT, type PurchaseRow } from "@/components/purchase-table";
+import { Database, type Row } from "@/components/database";
+import { purchaseColumns } from "@/lib/db-columns";
+import { withCustomFields } from "@/lib/custom-fields";
+import { PURCHASE_ROWS, purchaseRow } from "@/lib/project-db";
 import { PurchaseRequestForm } from "@/components/forms";
 import { ErrorNote } from "@/components/error-note";
 
@@ -21,11 +24,14 @@ export default async function Procurement({ searchParams }: { searchParams: Prom
   const back = `/procurement?view=${view}`;
 
   const [rows, projects, workItems, suppliers] = await Promise.all([
-    VIEWS[view].apply(supabase.from("purchases").select(PURCHASE_SELECT)).order("needed_by", { nullsFirst: false }),
+    VIEWS[view].apply(supabase.from("purchases").select(PURCHASE_ROWS)).order("needed_by", { nullsFirst: false }),
     supabase.from("projects").select("id,name").order("name"),
     supabase.from("work_items").select("id,name,project_id").order("name"),
     supabase.from("people").select("id,name").in("role", ["supplier", "contractor"]).eq("active", true).order("name"),
   ]);
+
+  const db = await withCustomFields(supabase, "purchases", purchaseColumns(me.role, suppliers.data ?? [], workItems.data ?? [], true),
+    ((rows.data ?? []) as Record<string, unknown>[]).map(purchaseRow) as Row[]);
 
   return (
     <>
@@ -37,7 +43,8 @@ export default async function Procurement({ searchParams }: { searchParams: Prom
         ))}
       </div>
       <Card>
-        <PurchaseTable rows={(rows.data ?? []) as unknown as PurchaseRow[]} role={me.role} suppliers={suppliers.data ?? []} back={back} />
+        <Database id={`procurement:${view}`} table="purchases" rows={db.rows} columns={db.columns} titleKey="request" editable creatable={false}
+          fieldsTable="purchases" canManageFields={me.role === "management"} initial={{ group: "project_name" }} views={["table", "board", "calendar"]} />
       </Card>
       {(
         <Card title="Request materials">

@@ -48,12 +48,13 @@ export function taskColumns(people: { id: string; name: string }[], workItems: {
   ];
 }
 
-export function purchaseColumns(role: Role, suppliers: { id: string; name: string }[], workItems: { id: string; name: string }[]): Column[] {
+export function purchaseColumns(role: Role, suppliers: { id: string; name: string }[], workItems: { id: string; name: string }[], withProject = false): Column[] {
   const buyer = role === "management" || role === "procurement";
   const payer = role === "management" || role === "accountant";
   return [
     { key: "request", label: "Request", type: "text", editable: buyer, width: 240 },
-    { key: "work_item_id", label: "Work item", type: "relation", options: rel(workItems), display: "work_item_name", editable: buyer },
+    ...(withProject ? [{ key: "project_name", label: "Project", type: "text" } as Column] : []),
+    { key: "work_item_id", label: "Work item", type: "relation", options: rel(workItems), display: "work_item_name", editable: buyer && !withProject },
     { key: "quantity", label: "Qty", type: "number", editable: buyer },
     { key: "unit", label: "Unit", type: "text", editable: buyer, width: 70 },
     { key: "needed_by", label: "Needed by", type: "date", editable: buyer },
@@ -81,5 +82,56 @@ export function submittalColumns(withProject: boolean): Column[] {
     { key: "returned_on", label: "Returned", type: "date", editable: true },
     { key: "link", label: "File", type: "url", editable: true },
     { key: "notes", label: "Notes", type: "longtext", editable: true, hidden: true },
+  ];
+}
+
+const rating = [1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: "★".repeat(n) + "☆".repeat(5 - n) }));
+
+export function vendorColumns(): Column[] {
+  return [
+    { key: "name", label: "Name", type: "text", editable: true, width: 220 },
+    { key: "role", label: "Type", type: "select", editable: true, options: [{ value: "supplier", label: "Supplier" }, { value: "contractor", label: "Contractor", tone: "info" }] },
+    { key: "company", label: "Company", type: "text", editable: true, hidden: true },
+    { key: "vendor_category", label: "Category", type: "text", editable: true },
+    { key: "trades_text", label: "Trades", type: "text" },
+    { key: "contact_person", label: "Contact", type: "text", editable: true },
+    { key: "phone", label: "Phone", type: "text", editable: true },
+    { key: "email", label: "Email", type: "text", editable: true },
+    { key: "payment_terms", label: "Terms", type: "text", editable: true },
+    { key: "rating", label: "Rating", type: "select", editable: true, options: rating },
+    { key: "orders", label: "Orders", type: "number" },
+    { key: "ordered_value", label: "Ordered", type: "money", sum: true },
+    { key: "last_order", label: "Last order", type: "date" },
+    { key: "active", label: "Active", type: "checkbox", editable: true, hidden: true },
+    { key: "notes", label: "Notes", type: "longtext", editable: true, hidden: true },
+  ];
+}
+
+export function contractColumns(): Column[] {
+  return [
+    { key: "number", label: "No.", type: "text", editable: true, width: 100 },
+    { key: "title", label: "Contract", type: "text", editable: true, width: 240 },
+    { key: "vendor_name", label: "Contractor", type: "text" },
+    { key: "project_name", label: "Project", type: "text" },
+    { key: "item_count", label: "Items", type: "number" },
+    { key: "contract_value", label: "Value", type: "money", sum: true },
+    { key: "start_date", label: "Start", type: "date", editable: true },
+    { key: "finish_date", label: "Finish", type: "date", editable: true },
+    { key: "progress", label: "Progress", type: "progress" },
+    { key: "status", label: "Status", type: "select", options: opts("contract_status"), editable: true },
+    { key: "link", label: "File", type: "url", editable: true, hidden: true },
+    { key: "notes", label: "Notes", type: "longtext", editable: true, hidden: true },
+  ];
+}
+
+export function peopleColumns(mgmt: boolean): Column[] {
+  return [
+    { key: "name", label: "Name", type: "text", editable: true, width: 220 },
+    { key: "company", label: "Company", type: "text", editable: true },
+    { key: "role", label: "Role", type: "select", editable: mgmt, options: opts("role") },
+    { key: "email", label: "Email", type: "text", editable: true, width: 220 },
+    { key: "phone", label: "Phone", type: "text", editable: true },
+    { key: "login", label: "Login", type: "text" },
+    { key: "active", label: "Active", type: "checkbox", editable: mgmt },
   ];
 }

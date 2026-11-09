@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
-import { requireMe, LABELS, type Role } from "@/lib/data";
-import { PageTitle, Card, Table, Field, Select } from "@/components/ui";
+import { requireMe } from "@/lib/data";
+import { Database, type Row } from "@/components/database";
+import { peopleColumns } from "@/lib/db-columns";
+import { PageTitle, Card, Field, Select } from "@/components/ui";
 import { savePerson } from "@/app/actions";
 import { ErrorNote } from "@/components/error-note";
 
@@ -11,37 +13,16 @@ export default async function People({ searchParams }: { searchParams: Promise<{
   const { error } = await searchParams;
   const { data: people = [] } = await supabase.from("people").select("*").order("role").order("name");
   const mgmt = me.role === "management";
+  const dbRows = (people ?? []).map((p) => ({ ...p, login: p.user_id ? "Signed up" : p.email ? "Not yet" : "" })) as Row[];
 
   return (
     <>
       <PageTitle title="People & companies" sub="Staff, clients, consultants and suppliers. People sign in with the email listed here." />
       <ErrorNote error={error} />
       <Card>
-        <Table head={["Name", "Company", "Role", "Email", "Phone", "Login", ""]} empty={!people?.length}>
-          {(people ?? []).map((p) => {
-            const editable = mgmt || (me.role === "procurement" && p.role === "supplier");
-            return (
-              <tr key={p.id} className={p.active ? "" : "opacity-50"}>
-                <td>{p.name}</td>
-                <td>{p.company}</td>
-                <td>{LABELS.role[p.role as Role]}</td>
-                <td>{p.email}</td>
-                <td>{p.phone}</td>
-                <td className="text-muted">{p.user_id ? "Signed up" : p.email ? "Not yet" : "—"}</td>
-                <td className="text-right">
-                  {editable && (
-                    <details className="relative inline-block text-left">
-                      <summary className="btn btn-sm list-none">Edit</summary>
-                      <div className="absolute right-0 z-10 mt-1 w-80 rounded-xl border border-line bg-surface p-4 shadow-lg">
-                        <PersonForm person={p} mgmt={mgmt} tendering={false} />
-                      </div>
-                    </details>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </Table>
+        <Database id="people" table="people" rows={dbRows} columns={peopleColumns(mgmt)} titleKey="name" editable
+          createDefaults={{ role: mgmt ? "client" : "client" }} creatable={mgmt} initial={{ group: "role" }} views={["table", "board", "list"]} />
+        {mgmt && <p className="mt-2 text-xs text-muted">New rows start as Client; change the Role cell to set what they can see. People sign in with the email listed here.</p>}
       </Card>
       <Card title={mgmt ? "Add a person" : me.role === "tendering" ? "Add a client or consultant" : "Add a supplier"}><PersonForm mgmt={mgmt} tendering={me.role === "tendering"} /></Card>
     </>

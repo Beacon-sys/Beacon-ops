@@ -7,6 +7,7 @@ import { withCustomFields } from "@/lib/custom-fields";
 import { PageTitle, Card, Stat, Badge, Progress } from "@/components/ui";
 import { WorkItemForm, PurchaseRequestForm, SiteTaskForm } from "@/components/forms";
 import { ErrorNote } from "@/components/error-note";
+import { ProjectHeader } from "@/components/project-tabs";
 
 export default async function ProjectPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }>;
@@ -59,10 +60,11 @@ export default async function ProjectPage({ params, searchParams }: {
 
   return (
     <>
+      <ProjectHeader id={id} name={p.name} code={p.code} current="overview" internal={internal} />
       <PageTitle
-        title={p.name}
-        sub={[p.code, p.location, who(p.client) && `Client: ${who(p.client)}`, who(p.consultant) && `Consultant: ${who(p.consultant)}`, who(p.pm) && `PM: ${who(p.pm)}`].filter(Boolean).join(" · ")}
-        action={<div className="flex gap-2"><Link className="btn" href={`/timeline?project=${id}`}>Timeline</Link>{(me.role === "management" || tenderOpen) && <Link className="btn" href={`${back}/edit`}>Edit project</Link>}</div>}
+        title="Overview"
+        sub={[p.location, who(p.client) && `Client: ${who(p.client)}`, who(p.consultant) && `Consultant: ${who(p.consultant)}`, who(p.pm) && `PM: ${who(p.pm)}`].filter(Boolean).join(" · ")}
+        action={<div className="flex gap-2">{(me.role === "management" || tenderOpen) && <Link className="btn" href={`${back}/edit`}>Edit project</Link>}</div>}
       />
       <ErrorNote error={error} />
 
