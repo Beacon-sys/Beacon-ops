@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { LANG_COOKIE } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signIn(fd: FormData) {
@@ -11,6 +12,10 @@ export async function signIn(fd: FormData) {
     password: String(fd.get("password")),
   });
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  // Use the language saved on the person's profile.
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: me } = user ? await supabase.from("people").select("language").eq("user_id", user.id).maybeSingle() : { data: null };
+  if (me?.language) (await cookies()).set(LANG_COOKIE, me.language, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   redirect("/");
 }
 
@@ -24,7 +29,7 @@ export async function signUp(fd: FormData) {
     options: { emailRedirectTo: `${origin}/auth/callback` },
   });
   if (error) redirect(`/login?mode=signup&error=${encodeURIComponent(error.message)}`);
-  if (!data.session) redirect("/login?notice=Check your email to confirm your account, then sign in.");
+  if (!data.session) redirect("/login?notice=confirm");
   redirect("/");
 }
 

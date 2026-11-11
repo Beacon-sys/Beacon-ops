@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T, TOption } from "@/components/i18n";
 import { requireMe, allowed } from "@/lib/data";
 import { Database, type Row as DbRow } from "@/components/database";
 import { contractColumns } from "@/lib/db-columns";
@@ -30,10 +31,10 @@ export default async function Contracts({ searchParams }: { searchParams: Promis
       <ErrorNote error={sp.error} />
       <form action="/procurement/contracts" className="mb-4 flex gap-2">
         <select name="project" defaultValue={sp.project ?? ""} className="input w-64">
-          <option value="">All projects</option>
+          <TOption value="" label="All projects" />
           {(projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button className="btn btn-sm">Filter</button>
+        <button className="btn btn-sm"><T>{"Filter"}</T></button>
       </form>
       <Card>
         <Database id={`contracts:${sp.project ?? "all"}`} table="contracts" rows={dbRows} columns={contractColumns()} titleKey="title"
@@ -43,7 +44,7 @@ export default async function Contracts({ searchParams }: { searchParams: Promis
         <Card title="New contract" id="new">
           {(projects ?? []).length && (vendors ?? []).length
             ? <ContractForm projects={projects ?? []} vendors={vendors ?? []} />
-            : <p className="text-sm text-muted">Add a project and a contractor (Vendors & contractors) first.</p>}
+            : <p className="text-sm text-muted"><T>{"Add a project and a contractor (Vendors & contractors) first."}</T></p>}
         </Card>
       )}
     </>

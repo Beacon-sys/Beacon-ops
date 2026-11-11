@@ -1,11 +1,13 @@
 import { saveContract } from "@/app/actions";
+import { getT } from "@/lib/i18n/server";
 import { Field, Select } from "@/components/ui";
 
 type Opt = { id: string; name: string };
 
-export function ContractForm({ c, projects, vendors, back }: {
+export async function ContractForm({ c, projects, vendors, back }: {
   c?: Record<string, unknown>; projects: Opt[]; vendors: Opt[]; back?: string;
 }) {
+  const t = await getT();
   const v = (k: string) => (c?.[k] ?? "") as string;
   return (
     <form action={saveContract} className="grid gap-3 sm:grid-cols-3">
@@ -22,14 +24,14 @@ export function ContractForm({ c, projects, vendors, back }: {
         </select>
       </Field>
       <Field label="Contract no."><input name="number" defaultValue={v("number")} placeholder="SC-001" className="input" /></Field>
-      <div className="sm:col-span-2"><Field label="Title / scope"><input name="title" required defaultValue={v("title")} placeholder="e.g. Earthworks and substructure" className="input" /></Field></div>
+      <div className="sm:col-span-2"><Field label="Title / scope"><input name="title" required defaultValue={v("title")} placeholder={t("e.g. Earthworks and substructure")} className="input" /></Field></div>
       <Field label="Status"><Select name="status" set="contract_status" defaultValue={v("status") || "draft"} /></Field>
       <Field label="Start"><input name="start_date" type="date" defaultValue={v("start_date")} className="input" /></Field>
       <Field label="Finish"><input name="finish_date" type="date" defaultValue={v("finish_date")} className="input" /></Field>
       <Field label="Retention %"><input name="retention_pct" type="number" step="0.5" defaultValue={c ? v("retention_pct") : "5"} className="input" /></Field>
       <div className="sm:col-span-3"><Field label="Signed contract link"><input name="link" type="url" defaultValue={v("link")} placeholder="https://drive.google.com/…" className="input" /></Field></div>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} defaultValue={v("notes")} className="input" /></Field></div>
-      <div className="sm:col-span-3"><button className="btn btn-primary">{c ? "Save contract" : "Create contract"}</button></div>
+      <div className="sm:col-span-3"><button className="btn btn-primary">{t(c ? "Save contract" : "Create contract")}</button></div>
     </form>
   );
 }

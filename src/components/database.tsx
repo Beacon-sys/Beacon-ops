@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useLang, useT, useContentTranslation } from "@/components/i18n";
+import { localeOf } from "@/lib/i18n";
 import { updateField, createRow, deleteRow, bulkUpdate, saveCustomField, deleteCustomField, moveCustomField } from "@/app/db-actions";
 
 export type ColType = "text" | "longtext" | "number" | "money" | "date" | "select" | "relation" | "checkbox" | "progress" | "url";
@@ -12,6 +14,7 @@ export type Column = {
   editable?: boolean; width?: number; sum?: boolean; hidden?: boolean;
   display?: string;   // for relations: key holding the display text
   custom?: { id: string; options: string[]; client_visible: boolean };   // management-defined column
+  translate?: boolean;   // user-entered text shown in Arabic (translated by Claude) when the interface is Arabic
 };
 export type Row = Record<string, unknown> & { id: string };
 export type ViewKind = "table" | "board" | "calendar" | "list" | "timeline";
@@ -34,9 +37,8 @@ const FIELD_TYPE_LABEL: Record<string, string> = {
   text: "Text", longtext: "Long text", number: "Number", money: "Money (EGP)", date: "Date", select: "Choice list", checkbox: "Checkbox", url: "Link",
 };
 const egp = new Intl.NumberFormat("en-EG", { style: "currency", currency: "EGP", maximumFractionDigits: 0 });
-const fmtDate = (d: string) => new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 
-export function Database({ id, table, columns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "timeline", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false, onSettingsChange }: {
+export function Database({ id, table, columns: rawColumns, rows, titleKey, href, editable, creatable = editable, createDefaults, views = ["table", "board", "timeline", "calendar", "list"], initial, fieldsTable, canManageFields = false, fullPage = false, onSettingsChange }: {
   id: string;                     // unique key to remember view settings
   table: string; columns: Column[]; rows: Row[]; titleKey: string;
   href?: string;                  // row page, with :id placeholder
@@ -47,6 +49,20 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   onSettingsChange?: (settings: Record<string, unknown>) => void;   // shared views: save settings for everyone
 }) {
   const router = useRouter();
+  const t = useT();
+  const lang = useLang();
+  const rtl = lang === "ar";
+  const locale = localeOf(lang);
+  const fmtDate = (d: string) => new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString(locale, { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
+  // Interface labels in the person's language; user-entered text translated by Claude.
+  const tc = useContentTranslation(rawColumns.filter((c) => c.translate).flatMap((c) => [
+    ...(c.options ?? []).map((o) => o.label),
+    ...rows.map((r) => r[c.display ?? c.key]).filter((v): v is string => typeof v === "string"),
+  ]));
+  const columns = useMemo(() => rawColumns.map((c) => ({
+    ...c, label: t(c.label),
+    options: c.options?.map((o) => ({ ...o, label: c.translate ? tc(o.label) : c.type === "select" ? t(o.label) : o.label })),
+  })), [rawColumns, t, tc]);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [local, setLocal] = useState<Record<string, Record<string, unknown>>>({});
@@ -87,8 +103,8 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   const text = (r: Row, c: Column): string => {
     const v = val(r, c.key);
     if (v === null || v === undefined || v === "") return "";
-    if (c.type === "select" || c.type === "relation") return c.options?.find((o) => o.value === v)?.label ?? (c.display ? String(r[c.display] ?? "") : String(v));
-    return String(v);
+    if (c.type === "select" || c.type === "relation") return c.options?.find((o) => o.value === v)?.label ?? (c.display ? (c.translate ? tc(String(r[c.display] ?? "")) : String(r[c.display] ?? "")) : String(v));
+    return c.translate ? tc(String(v)) : String(v);
   };
 
   const save = (r: Row, c: Column, value: unknown) => {
@@ -106,7 +122,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   };
 
   const addRow = (extra: Record<string, unknown> = {}, given?: string) => {
-    const title = given ?? window.prompt("Name of the new item");
+    const title = given ?? window.prompt(t("Name of the new item"));
     if (!title) return;
     start(async () => {
       const res = await createRow(table, { ...createDefaults, ...extra, [titleKey]: title } as Record<string, string | number | boolean | null>);
@@ -114,7 +130,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     });
   };
   const removeRow = (r: Row) => {
-    if (!window.confirm(`Delete "${text(r, col(titleKey)!)}"? This can't be undone.`)) return;
+    if (!window.confirm(t("Delete \"{name}\"? This can't be undone.", { name: text(r, col(titleKey)!) }))) return;
     start(async () => {
       const res = await deleteRow(table, r.id);
       if (res.error) setError(res.error); else { setError(null); router.refresh(); }
@@ -170,7 +186,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     const m = new Map<string, Row[]>(order.map((o) => [o, []]));
     list.forEach((r) => { const k = String(val(r, key) ?? ""); m.set(k, [...(m.get(k) ?? []), r]); });
     return [...m.entries()].filter(([, rs]) => rs.length || c.type === "select")
-      .map(([k, rs]) => ({ key: k, label: c.options?.find((o) => o.value === k)?.label ?? (k || "No " + c.label.toLowerCase()), rows: rs }));
+      .map(([k, rs]) => ({ key: k, label: c.options?.find((o) => o.value === k)?.label ?? (k || t("No {field}", { field: c.label.toLowerCase() })), rows: rs }));
   };
 
   // ---- cells
@@ -179,7 +195,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     if (v === null || v === undefined || v === "") return <span className="text-muted/50">—</span>;
     switch (c.type) {
       case "money": return <span className="tabular-nums">{egp.format(Number(v))}</span>;
-      case "number": return <span className="tabular-nums">{Number(v).toLocaleString("en-GB", { maximumFractionDigits: 2 })}</span>;
+      case "number": return <span className="tabular-nums">{Number(v).toLocaleString(locale, { maximumFractionDigits: 2 })}</span>;
       case "date": return fmtDate(String(v));
       case "checkbox": return v ? "✓" : "";
       case "progress": return (
@@ -188,9 +204,9 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
       case "select": { const o = c.options?.find((x) => x.value === v);
         return <span className={`badge badge-${o?.tone ?? TONES[String(v)] ?? "neutral"}`}>{o?.label ?? String(v)}</span>; }
       case "relation": return <span className="rounded bg-[var(--neutral-bg)] px-1.5 py-0.5 text-xs">{text(r, c)}</span>;
-      case "url": return <a className="link" href={String(v)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>Open ↗</a>;
-      case "longtext": return <span className="line-clamp-2">{String(v)}</span>;
-      default: return String(v);
+      case "url": return <a className="link" href={String(v)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{t("Open")} ↗</a>;
+      case "longtext": return <span className="line-clamp-2">{c.translate ? tc(String(v)) : String(v)}</span>;
+      default: return c.translate ? tc(String(v)) : String(v);
     }
   };
   const canEditCell = (c: Column) => editable && !!c.editable;
@@ -199,7 +215,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   const startResize = (e: React.MouseEvent, c: Column) => {
     e.preventDefault(); e.stopPropagation();
     const x0 = e.clientX, w0 = widthOf(c);
-    const onMove = (ev: MouseEvent) => setS((x) => ({ ...x, widths: { ...x.widths, [c.key]: Math.max(60, w0 + ev.clientX - x0) } }));
+    const onMove = (ev: MouseEvent) => setS((x) => ({ ...x, widths: { ...x.widths, [c.key]: Math.max(60, w0 + (ev.clientX - x0) * (rtl ? -1 : 1)) } }));
     const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
     window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
   };
@@ -300,7 +316,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
       if (!r && creatable && extra[titleKey]) newRows.push({ ...createDefaults, ...extra });
       else if (!r && cells.some((x) => x.trim())) skipped++;
     });
-    if (!changes.length && !newRows.length) { setError(skipped ? "Nothing pasted: the values didn't match these columns." : null); return; }
+    if (!changes.length && !newRows.length) { setError(skipped ? t("Nothing pasted: the values didn't match these columns.") : null); return; }
     setLocal((l) => {
       const n = { ...l };
       changes.forEach((ch) => { n[ch.id] = { ...n[ch.id], [ch.field]: ch.value }; });
@@ -309,7 +325,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     start(async () => {
       const res = await bulkUpdate(table, changes, newRows);
       if (res.error) setError(res.error);
-      else setError(skipped ? `Pasted. ${skipped} value${skipped === 1 ? "" : "s"} didn't fit the column and were skipped.` : null);
+      else setError(skipped ? t(skipped === 1 ? "Pasted. 1 value didn't fit the column and was skipped." : "Pasted. {n} values didn't fit the column and were skipped.", { n: skipped }) : null);
       router.refresh();
     });
   };
@@ -321,8 +337,8 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     const go = (dr: number, dc: number) => { e.preventDefault(); setSel(moveSel(sel, dr, dc)); };
     if (e.key === "ArrowDown") go(1, 0);
     else if (e.key === "ArrowUp") go(-1, 0);
-    else if (e.key === "ArrowRight") go(0, 1);
-    else if (e.key === "ArrowLeft") go(0, -1);
+    else if (e.key === "ArrowRight") go(0, rtl ? -1 : 1);
+    else if (e.key === "ArrowLeft") go(0, rtl ? 1 : -1);
     else if (e.key === "Tab") go(0, e.shiftKey ? -1 : 1);
     else if (e.key === "Enter" || e.key === "F2") { e.preventDefault(); startEdit(r, c); }
     else if (e.key === " " && c.type === "checkbox") { e.preventDefault(); startEdit(r, c); }
@@ -350,22 +366,22 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
         className={`overflow-auto outline-none ${fullPage ? "max-h-[calc(100vh-15rem)] rounded-lg border border-line bg-surface" : "-mx-4"}`}>
         <table className="text-sm" style={{ tableLayout: "fixed", width: visibleCols.reduce((t, c) => t + widthOf(c), 0) + 40, minWidth: "100%" }}>
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-muted">
+            <tr className="text-start text-xs uppercase tracking-wide text-muted">
               {visibleCols.map((c) => (
                 <th key={c.key} style={{ width: widthOf(c) }}
-                  className={`group/h sticky top-0 z-[1] cursor-pointer select-none truncate border-b border-line bg-surface px-3 py-2 font-medium hover:text-fg ${["number", "money"].includes(c.type) ? "text-right" : ""}`}
+                  className={`group/h sticky top-0 z-[1] cursor-pointer select-none truncate border-b border-line bg-surface px-3 py-2 font-medium hover:text-fg ${["number", "money"].includes(c.type) ? "text-end" : "text-start"}`}
                   onClick={() => setS({ ...s, sort: s.sort?.key === c.key ? (s.sort.dir === "asc" ? { key: c.key, dir: "desc" } : null) : { key: c.key, dir: "asc" } })}>
                   {c.label}{s.sort?.key === c.key ? (s.sort.dir === "asc" ? " ↑" : " ↓") : ""}
                   {canManageFields && c.custom && (
-                    <button title="Edit column" className="ml-1 rounded px-1 normal-case text-muted opacity-0 hover:bg-[var(--neutral-bg)] group-hover/h:opacity-100"
+                    <button title={t("Edit column")} className="ms-1 rounded px-1 normal-case text-muted opacity-0 hover:bg-[var(--neutral-bg)] group-hover/h:opacity-100"
                       onClick={(e) => { e.stopPropagation(); setPanel(null); setFieldForm({ id: c.custom!.id, label: c.label, type: c.type, options: c.custom!.options.join(", "), client_visible: c.custom!.client_visible }); }}>⋯</button>
                   )}
-                  <span title="Drag to resize" onMouseDown={(e) => startResize(e, c)} onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[var(--brand)]/40" />
+                  <span title={t("Drag to resize")} onMouseDown={(e) => startResize(e, c)} onClick={(e) => e.stopPropagation()}
+                    className="absolute end-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[var(--brand)]/40" />
                 </th>
               ))}
               {canManageFields
-                ? <th className="sticky top-0 z-[1] w-10 border-b border-line bg-surface px-1"><button title="Add a column" onClick={() => { setPanel(null); setFieldForm(newField); }} className="rounded px-2 py-0.5 text-base text-muted hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></th>
+                ? <th className="sticky top-0 z-[1] w-10 border-b border-line bg-surface px-1"><button title={t("Add a column")} onClick={() => { setPanel(null); setFieldForm(newField); }} className="rounded px-2 py-0.5 text-base text-muted hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></th>
                 : <th className="sticky top-0 z-[1] w-10 border-b border-line bg-surface" />}
             </tr>
           </thead>
@@ -374,7 +390,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
             {creatable && (
               <tr className="border-b border-line">
                 <td colSpan={visibleCols.length + 1} className="px-3 py-1">
-                  <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="+ New row: type a name and press Enter"
+                  <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("+ New row: type a name and press Enter")}
                     className="w-full rounded bg-transparent px-1 py-1 text-sm outline-none placeholder:text-muted focus:bg-[var(--neutral-bg)]"
                     onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) { const t = newTitle.trim(); setNewTitle(""); addRow({}, t); } }} />
                 </td>
@@ -382,8 +398,8 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
             )}
             <tr className="font-medium">
               {visibleCols.map((c, i) => (
-                <td key={c.key} className={`px-4 py-2 ${["number", "money"].includes(c.type) ? "text-right tabular-nums" : "text-xs text-muted"}`}>
-                  {i === 0 ? `${shown.length} ${shown.length === 1 ? "row" : "rows"}` : c.sum ? (c.type === "money" ? egp.format(shown.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0)) : shown.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0).toLocaleString()) : ""}
+                <td key={c.key} className={`px-4 py-2 ${["number", "money"].includes(c.type) ? "text-end tabular-nums" : "text-xs text-muted"}`}>
+                  {i === 0 ? t(shown.length === 1 ? "1 row" : "{n} rows", { n: shown.length }) : c.sum ? (c.type === "money" ? egp.format(shown.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0)) : shown.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0).toLocaleString()) : ""}
                 </td>
               ))}
               <td />
@@ -391,7 +407,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
           </tbody>
         </table>
       </div>
-      {editable && <p className="mt-2 text-xs text-muted">Click a cell and type to edit. Arrow keys and Tab move, Enter edits or saves, Delete clears. You can paste a block of cells from Excel or Google Sheets; extra lines become new rows.</p>}
+      {editable && <p className="mt-2 text-xs text-muted">{t("Click a cell and type to edit. Arrow keys and Tab move, Enter edits or saves, Delete clears. You can paste a block of cells from Excel or Google Sheets; extra lines become new rows.")}</p>}
     </div>
   );
 
@@ -402,10 +418,10 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
         {s.group && (
           <tr className="bg-[var(--neutral-bg)]/60">
             <td colSpan={visibleCols.length + 1} className="px-4 py-1.5 text-xs font-semibold">
-              <button onClick={() => setCollapsed({ ...collapsed, [g.key]: open })} className="mr-2">{open ? "▾" : "▸"}</button>{g.label}
-              <span className="ml-2 font-normal text-muted">{g.rows.length}</span>
+              <button onClick={() => setCollapsed({ ...collapsed, [g.key]: open })} className="me-2">{open ? "▾" : "▸"}</button>{g.label}
+              <span className="ms-2 font-normal text-muted">{g.rows.length}</span>
               {columns.filter((c) => c.sum && c.type === "money" && !s.hidden.includes(c.key)).map((c) => (
-                <span key={c.key} className="ml-3 font-normal text-muted">{c.label}: {egp.format(g.rows.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0))}</span>
+                <span key={c.key} className="ms-3 font-normal text-muted">{c.label}: {egp.format(g.rows.reduce((t, r) => t + Number(val(r, c.key) ?? 0), 0))}</span>
               ))}
             </td>
           </tr>
@@ -425,16 +441,16 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                   onDoubleClick={() => startEdit(r, c)}>
                   {isEditing ? editor(r, c, val(r, c.key), editing?.seed) : (
                     <div className="flex items-start gap-1">
-                      <div className={`min-h-[1.75rem] min-w-0 flex-1 break-words rounded px-1 py-0.5 ${canEditCell(c) ? "cursor-cell" : ""} ${["number", "money"].includes(c.type) ? "text-right" : ""}`}>{display(r, c)}</div>
-                      {c.key === titleKey && rowHref(r) && <Link href={rowHref(r)!} title="Open as page" onClick={(e) => e.stopPropagation()}
-                        className="invisible mt-0.5 shrink-0 rounded border border-line px-1.5 text-xs text-muted hover:text-fg group-hover:visible">Open</Link>}
+                      <div className={`min-h-[1.75rem] min-w-0 flex-1 break-words rounded px-1 py-0.5 ${canEditCell(c) ? "cursor-cell" : ""} ${["number", "money"].includes(c.type) ? "text-end" : ""}`}>{display(r, c)}</div>
+                      {c.key === titleKey && rowHref(r) && <Link href={rowHref(r)!} title={t("Open as page")} onClick={(e) => e.stopPropagation()}
+                        className="invisible mt-0.5 shrink-0 rounded border border-line px-1.5 text-xs text-muted hover:text-fg group-hover:visible">{t("Open")}</Link>}
                     </div>
                   )}
                 </td>
               );
             })}
-            <td className="px-1 py-1 text-right">
-              {editable && <button title="Delete row" onClick={() => removeRow(r)} className="invisible rounded px-1.5 text-muted hover:text-[var(--bad)] group-hover:visible">×</button>}
+            <td className="px-1 py-1 text-end">
+              {editable && <button title={t("Delete row")} onClick={() => removeRow(r)} className="invisible rounded px-1.5 text-muted hover:text-[var(--bad)] group-hover:visible">×</button>}
             </td>
           </tr>
         ))}
@@ -456,7 +472,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
             {g.rows.map((r) => (
               <div key={r.id} draggable={editable} onDragStart={(e) => e.dataTransfer.setData("text/row", r.id)}
                 className={`rounded-lg border border-line bg-surface p-2.5 text-sm shadow-sm ${editable ? "cursor-grab" : ""}`}>
-                <div className="font-medium">{rowHref(r) ? <Link className="hover:underline" href={rowHref(r)!}>{text(r, titleCol) || "Untitled"}</Link> : text(r, titleCol)}</div>
+                <div className="font-medium">{rowHref(r) ? <Link className="hover:underline" href={rowHref(r)!}>{text(r, titleCol) || t("Untitled")}</Link> : text(r, titleCol)}</div>
                 <div className="mt-1.5 flex flex-col gap-1 text-xs text-muted">
                   {visibleCols.filter((c) => c.key !== titleKey && c.key !== boardKey && val(r, c.key) !== null && val(r, c.key) !== "" && val(r, c.key) !== undefined).slice(0, 4).map((c) => (
                     <div key={c.key} className="flex justify-between gap-2"><span>{c.label}</span><span className="text-fg">{display(r, c)}</span></div>
@@ -464,12 +480,12 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                 </div>
               </div>
             ))}
-            {creatable && <button onClick={() => addRow({ [boardKey]: g.key || null })} className="rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-surface">+ New</button>}
+            {creatable && <button onClick={() => addRow({ [boardKey]: g.key || null })} className="rounded-lg px-2 py-1.5 text-start text-xs text-muted hover:bg-surface">+ {t("New")}</button>}
           </div>
         </div>
       ))}
     </div>
-  ) : <p className="text-sm text-muted">Board view needs a status-type column.</p>;
+  ) : <p className="text-sm text-muted">{t("Board view needs a status-type column.")}</p>;
 
   const dateKey = s.dateBy && col(s.dateBy)?.type === "date" ? s.dateBy : firstDate;
   const calendarView = dateKey ? (() => {
@@ -483,22 +499,22 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     return (
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <button className="btn btn-sm" onClick={() => move(-1)}>←</button>
-          <span className="w-40 text-center font-medium">{first.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })}</span>
-          <button className="btn btn-sm" onClick={() => move(1)}>→</button>
-          <button className="btn btn-sm" onClick={() => setS({ ...s, month: today.slice(0, 7) })}>Today</button>
-          <span className="ml-auto text-xs text-muted">Drag an item to another day to change its {col(dateKey)!.label.toLowerCase()}</span>
+          <button className="btn btn-sm" onClick={() => move(-1)}>{rtl ? "→" : "←"}</button>
+          <span className="w-40 text-center font-medium">{first.toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "UTC" })}</span>
+          <button className="btn btn-sm" onClick={() => move(1)}>{rtl ? "←" : "→"}</button>
+          <button className="btn btn-sm" onClick={() => setS({ ...s, month: today.slice(0, 7) })}>{t("Today")}</button>
+          <span className="ms-auto text-xs text-muted">{t("Drag an item to another day to change its {field}", { field: col(dateKey)!.label.toLowerCase() })}</span>
         </div>
         <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-line text-xs">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="border-b border-line bg-[var(--neutral-bg)]/60 px-2 py-1 font-medium text-muted">{d}</div>)}
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => t(d)).map((d) => <div key={d} className="border-b border-line bg-[var(--neutral-bg)]/60 px-2 py-1 font-medium text-muted">{d}</div>)}
           {cells.map((d, i) => {
             const iso = d >= 1 && d <= daysIn ? `${s.month}-${String(d).padStart(2, "0")}` : null;
             const items = iso ? shown.filter((r) => String(val(r, dateKey) ?? "").slice(0, 10) === iso) : [];
             return (
-              <div key={i} className={`min-h-24 border-b border-r border-line p-1 ${iso ? "" : "bg-[var(--neutral-bg)]/30"}`}
+              <div key={i} className={`min-h-24 border-b border-e border-line p-1 ${iso ? "" : "bg-[var(--neutral-bg)]/30"}`}
                 onDragOver={(e) => editable && iso && e.preventDefault()}
                 onDrop={(e) => { const r = rows.find((x) => x.id === e.dataTransfer.getData("text/row")); if (r && iso) save(r, col(dateKey)!, iso); }}>
-                {iso && <div className={`mb-1 text-right ${iso === today ? "font-bold text-[var(--bad)]" : "text-muted"}`}>{d}</div>}
+                {iso && <div className={`mb-1 text-end ${iso === today ? "font-bold text-[var(--bad)]" : "text-muted"}`}>{d}</div>}
                 {items.map((r) => (
                   <div key={r.id} draggable={editable} onDragStart={(e) => e.dataTransfer.setData("text/row", r.id)}
                     className="mb-1 truncate rounded bg-[var(--info-bg)] px-1.5 py-0.5 text-[var(--info)]">
@@ -511,7 +527,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
         </div>
       </div>
     );
-  })() : <p className="text-sm text-muted">Calendar view needs a date column.</p>;
+  })() : <p className="text-sm text-muted">{t("Calendar view needs a date column.")}</p>;
 
   // ---- timeline: bars from a start date to an end date; drag to move, drag an edge to resize
   const dateCols = columns.filter((c) => c.type === "date");
@@ -525,7 +541,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
   const pxDay = s.tlZoom === "week" ? 32 : s.tlZoom === "quarter" ? 4 : 12;
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "start" | "end"; x0: number; s0: number; e0: number; ds: number; de: number } | null>(null);
   const timelineView = (() => {
-    if (!tlStart || !tlEnd) return <p className="text-sm text-muted">Timeline view needs date columns.</p>;
+    if (!tlStart || !tlEnd) return <p className="text-sm text-muted">{t("Timeline view needs date columns.")}</p>;
     const span = (r: Row) => {
       let a = toDay(val(r, tlStart)), b = toDay(val(r, tlEnd));
       if (drag && drag.id === r.id) { a = a === null ? null : a + drag.ds; b = b === null ? null : b + drag.de; }
@@ -573,25 +589,25 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
     return (
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-5 rounded bg-[var(--brand)]/70" /> Planned</span>
-          {actStart && <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-5 rounded bg-[var(--good)]" /> Actual</span>}
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-0.5 bg-[var(--bad)]" /> Today</span>
-          {canDrag && <span>Drag a bar to move it, or its ends to change the start or finish.</span>}
-          <div className="ml-auto flex gap-1">
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-5 rounded bg-[var(--brand)]/70" /> {t("Planned")}</span>
+          {actStart && <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-5 rounded bg-[var(--good)]" /> {t("Actual")}</span>}
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-0.5 bg-[var(--bad)]" /> {t("Today")}</span>
+          {canDrag && <span>{t("Drag a bar to move it, or its ends to change the start or finish.")}</span>}
+          <div className="ms-auto flex gap-1">
             {(["week", "month", "quarter"] as const).map((z) => (
-              <button key={z} onClick={() => setS({ ...s, tlZoom: z })} className={`btn btn-sm ${(s.tlZoom ?? "month") === z ? "btn-primary" : ""}`}>{z[0].toUpperCase() + z.slice(1)}</button>
+              <button key={z} onClick={() => setS({ ...s, tlZoom: z })} className={`btn btn-sm ${(s.tlZoom ?? "month") === z ? "btn-primary" : ""}`}>{t(z[0].toUpperCase() + z.slice(1))}</button>
             ))}
           </div>
         </div>
-        <div className={`flex overflow-hidden rounded-lg border border-line ${fullPage ? "max-h-[calc(100vh-17rem)] overflow-y-auto" : ""}`}>
-          <div className="w-64 shrink-0 border-r border-line bg-surface">
+        <div dir="ltr" className={`flex overflow-hidden rounded-lg border border-line ${fullPage ? "max-h-[calc(100vh-17rem)] overflow-y-auto" : ""}`}>
+          <div dir={rtl ? "rtl" : undefined} className="w-64 shrink-0 border-e border-line bg-surface">
             <div className="sticky top-0 z-[2] h-8 border-b border-line bg-surface px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-muted">{titleCol.label}</div>
             {list.map((g) => (
               <Fragment key={g.key}>
                 {s.group && <div className="truncate bg-[var(--neutral-bg)]/60 px-3 text-xs font-semibold leading-7">{g.label}</div>}
                 {g.rows.map((r) => (
                   <div key={r.id} style={{ height: ROW }} className="flex items-center truncate border-b border-line px-3 text-sm">
-                    {rowHref(r) ? <Link className="truncate hover:underline" href={rowHref(r)!}>{text(r, titleCol) || "Untitled"}</Link> : <span className="truncate">{text(r, titleCol)}</span>}
+                    {rowHref(r) ? <Link className="truncate hover:underline" href={rowHref(r)!}>{text(r, titleCol) || t("Untitled")}</Link> : <span className="truncate">{text(r, titleCol)}</span>}
                   </div>
                 ))}
               </Fragment>
@@ -601,8 +617,8 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
             <div style={{ width }} className="relative">
               <div className="sticky top-0 z-[1] h-8 border-b border-line bg-surface">
                 {months.map((d) => (
-                  <div key={d} style={{ left: x(d) }} className="absolute top-0 h-full border-l border-line px-1.5 py-1.5 text-xs text-muted">
-                    {new Date(d * DAY).toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" })}
+                  <div key={d} style={{ left: x(d) }} className="absolute top-0 h-full border-s border-line px-1.5 py-1.5 text-xs text-muted">
+                    {new Date(d * DAY).toLocaleDateString(locale, { month: "short", year: "2-digit", timeZone: "UTC" })}
                   </div>
                 ))}
               </div>
@@ -617,23 +633,23 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                     const late = !done && sp && sp.b < today;
                     return (
                       <div key={r.id} style={{ height: ROW }} className="relative border-b border-line">
-                        {months.map((d) => <div key={d} style={{ left: x(d) }} className="absolute inset-y-0 border-l border-line/60" />)}
+                        {months.map((d) => <div key={d} style={{ left: x(d) }} className="absolute inset-y-0 border-s border-line/60" />)}
                         {sp ? (
                           <div style={{ left: x(sp.a), width: Math.max(pxDay, (sp.b - sp.a + 1) * pxDay) }} title={`${fmtDate(iso(sp.a))} → ${fmtDate(iso(sp.b))}`}
                             onMouseDown={(e) => begin(e, r, "move")}
                             className={`group/bar absolute top-1.5 h-4 rounded ${late ? "bg-[var(--bad)]/60" : done ? "bg-[var(--good)]/60" : "bg-[var(--brand)]/70"} ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}>
                             {canDrag && <>
-                              <span onMouseDown={(e) => begin(e, r, "start")} className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize rounded-l bg-black/20 opacity-0 group-hover/bar:opacity-100" />
-                              <span onMouseDown={(e) => begin(e, r, "end")} className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize rounded-r bg-black/20 opacity-0 group-hover/bar:opacity-100" />
+                              <span onMouseDown={(e) => begin(e, r, "start")} className="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize rounded-s bg-black/20 opacity-0 group-hover/bar:opacity-100" />
+                              <span onMouseDown={(e) => begin(e, r, "end")} className="absolute inset-y-0 end-0 w-1.5 cursor-ew-resize rounded-e bg-black/20 opacity-0 group-hover/bar:opacity-100" />
                             </>}
                             {pxDay * (sp.b - sp.a + 1) > 90 && <span className="pointer-events-none block truncate px-1.5 text-[11px] leading-4 text-white">{text(r, titleCol)}</span>}
                           </div>
                         ) : canDrag ? (
                           <button onClick={() => { const st = today; setLocal((l) => ({ ...l, [r.id]: { ...l[r.id], [tlStart]: iso(st), [tlEnd]: iso(st + 6) } }));
                             start(async () => { const res = await bulkUpdate(table, [{ id: r.id, field: tlStart, value: iso(st) }, ...(tlEnd !== tlStart ? [{ id: r.id, field: tlEnd, value: iso(st + 6) }] : [])]); if (res.error) setError(res.error); router.refresh(); }); }}
-                            style={{ left: x(today) + 4 }} className="absolute top-1.5 rounded border border-dashed border-line px-2 text-[11px] leading-4 text-muted hover:text-fg">+ Add dates</button>
+                            style={{ left: x(today) + 4 }} className="absolute top-1.5 rounded border border-dashed border-line px-2 text-[11px] leading-4 text-muted hover:text-fg">+ {t("Add dates")}</button>
                         ) : null}
-                        {as !== null && <div style={{ left: x(as), width: Math.max(pxDay, ((ae ?? today) - as + 1) * pxDay) }} className="absolute top-[26px] h-1.5 rounded bg-[var(--good)]" title="Actual" />}
+                        {as !== null && <div style={{ left: x(as), width: Math.max(pxDay, ((ae ?? today) - as + 1) * pxDay) }} className="absolute top-[26px] h-1.5 rounded bg-[var(--good)]" title={t("Actual")} />}
                       </div>
                     );
                   })}
@@ -652,7 +668,7 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
         <li key={r.id} className="flex items-center gap-3 py-2 text-sm">
           <span className="flex-1">{rowHref(r) ? <Link className="link" href={rowHref(r)!}>{text(r, titleCol)}</Link> : text(r, titleCol)}</span>
           {visibleCols.filter((c) => c.type === "select").slice(0, 2).map((c) => <span key={c.key}>{display(r, c)}</span>)}
-          {dateKey && <span className="w-28 text-right text-xs text-muted">{val(r, dateKey) ? fmtDate(String(val(r, dateKey))) : ""}</span>}
+          {dateKey && <span className="w-28 text-end text-xs text-muted">{val(r, dateKey) ? fmtDate(String(val(r, dateKey))) : ""}</span>}
         </li>
       ))}
     </ul>
@@ -665,8 +681,8 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
       if (res.error) setError(res.error); else { setError(null); if (!keepOpen) setFieldForm(null); router.refresh(); }
     });
   };
-  const opLabels: Record<Filter["op"], string> = { is: "is", not: "is not", contains: "contains", empty: "is empty", notempty: "is not empty", before: "before", after: "after" };
-  const VIEW_LABEL: Record<ViewKind, string> = { table: "Table", board: "Board", timeline: "Timeline", calendar: "Calendar", list: "List" };
+  const opLabels: Record<Filter["op"], string> = { is: t("is"), not: t("is not"), contains: t("contains"), empty: t("is empty"), notempty: t("is not empty"), before: t("before"), after: t("after") };
+  const VIEW_LABEL: Record<ViewKind, string> = { table: t("Table"), board: t("Board"), timeline: t("Timeline"), calendar: t("Calendar"), list: t("List") };
 
   return (
     <div>
@@ -676,15 +692,15 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
             <button key={v} onClick={() => setS({ ...s, view: v })} className={`btn btn-sm ${s.view === v ? "btn-primary" : ""}`}>{VIEW_LABEL[v]}</button>
           ))}
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-1">
-          <input value={s.search} onChange={(e) => setS({ ...s, search: e.target.value })} placeholder="Search…" className="input w-40 py-1" />
+        <div className="ms-auto flex flex-wrap items-center gap-1">
+          <input value={s.search} onChange={(e) => setS({ ...s, search: e.target.value })} placeholder={t("Search…")} className="input w-40 py-1" />
           {(["filter", "sort", "group", "fields"] as const).map((p) => (
             <button key={p} onClick={() => setPanel(panel === p ? null : p)}
               className={`btn btn-sm ${panel === p ? "btn-primary" : ""}`}>
-              {p === "filter" ? `Filter${s.filters.length ? ` (${s.filters.length})` : ""}` : p === "sort" ? "Sort" : p === "group" ? (s.view === "board" ? "Board by" : s.view === "calendar" ? "Date field" : s.view === "timeline" ? "Dates & group" : "Group") : "Fields"}
+              {p === "filter" ? `${t("Filter")}${s.filters.length ? ` (${s.filters.length})` : ""}` : p === "sort" ? t("Sort") : p === "group" ? t(s.view === "board" ? "Board by" : s.view === "calendar" ? "Date field" : s.view === "timeline" ? "Dates & group" : "Group") : t("Fields")}
             </button>
           ))}
-          {creatable && <button onClick={() => addRow()} className="btn btn-sm btn-primary">+ New</button>}
+          {creatable && <button onClick={() => addRow()} className="btn btn-sm btn-primary">+ {t("New")}</button>}
         </div>
       </div>
 
@@ -708,21 +724,21 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                         <option value="">—</option>{c.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                     ) : <input className="input w-48 py-1" type={c?.type === "date" ? "date" : "text"} value={f.value} onChange={(e) => setF({ value: e.target.value })} />)}
-                    <button className="btn btn-sm" onClick={() => setS({ ...s, filters: s.filters.filter((_, j) => j !== i) })}>Remove</button>
+                    <button className="btn btn-sm" onClick={() => setS({ ...s, filters: s.filters.filter((_, j) => j !== i) })}>{t("Remove")}</button>
                   </div>
                 );
               })}
-              <div><button className="btn btn-sm" onClick={() => setS({ ...s, filters: [...s.filters, { key: firstSelect ?? titleKey, op: "is", value: "" }] })}>+ Add filter</button></div>
+              <div><button className="btn btn-sm" onClick={() => setS({ ...s, filters: [...s.filters, { key: firstSelect ?? titleKey, op: "is", value: "" }] })}>+ {t("Add filter")}</button></div>
             </div>
           )}
           {panel === "sort" && (
             <div className="flex flex-wrap items-center gap-2">
               <select className="input w-48 py-1" value={s.sort?.key ?? ""} onChange={(e) => setS({ ...s, sort: e.target.value ? { key: e.target.value, dir: s.sort?.dir ?? "asc" } : null })}>
-                <option value="">No sorting</option>{columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                <option value="">{t("No sorting")}</option>{columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
               {s.sort && (
                 <select className="input w-36 py-1" value={s.sort.dir} onChange={(e) => setS({ ...s, sort: { ...s.sort!, dir: e.target.value as "asc" | "desc" } })}>
-                  <option value="asc">Ascending</option><option value="desc">Descending</option>
+                  <option value="asc">{t("Ascending")}</option><option value="desc">{t("Descending")}</option>
                 </select>
               )}
             </div>
@@ -739,18 +755,18 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
                 </select>
               ) : (<>
                 {s.view === "timeline" && <>
-                  <span className="text-xs text-muted">Start</span>
+                  <span className="text-xs text-muted">{t("Start")}</span>
                   <select className="input w-44 py-1" value={tlStart ?? ""} onChange={(e) => setS({ ...s, startBy: e.target.value })}>
                     {dateCols.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
-                  <span className="text-xs text-muted">End</span>
+                  <span className="text-xs text-muted">{t("End")}</span>
                   <select className="input w-44 py-1" value={tlEnd ?? ""} onChange={(e) => setS({ ...s, endBy: e.target.value })}>
                     {dateCols.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
-                  <span className="text-xs text-muted">Group</span>
+                  <span className="text-xs text-muted">{t("Group")}</span>
                 </>}
                 <select className="input w-48 py-1" value={s.group ?? ""} onChange={(e) => setS({ ...s, group: e.target.value || null })}>
-                  <option value="">No grouping</option>
+                  <option value="">{t("No grouping")}</option>
                   {columns.filter((c) => ["select", "relation", "text"].includes(c.type)).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </>)}
@@ -771,41 +787,44 @@ export function Database({ id, table, columns, rows, titleKey, href, editable, c
 
       {fieldForm && fieldsTable && (
         <div className="mb-3 rounded-lg border border-line p-3 text-sm">
-          <div className="mb-2 font-medium">{fieldForm.id ? "Edit column" : "New column"}</div>
+          <div className="mb-2 font-medium">{t(fieldForm.id ? "Edit column" : "New column")}</div>
           <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-xs text-muted">Name
+            <label className="flex flex-col gap-1 text-xs text-muted">{t("Name")}
               <input autoFocus className="input w-48 py-1 text-sm text-fg" value={fieldForm.label} onChange={(e) => setFieldForm({ ...fieldForm, label: e.target.value })} /></label>
-            <label className="flex flex-col gap-1 text-xs text-muted">Type
+            <label className="flex flex-col gap-1 text-xs text-muted">{t("Type")}
               <select className="input w-40 py-1 text-sm text-fg" value={fieldForm.type} onChange={(e) => setFieldForm({ ...fieldForm, type: e.target.value })}>
-                {Object.entries(FIELD_TYPE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                {Object.entries(FIELD_TYPE_LABEL).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
               </select></label>
             {fieldForm.type === "select" && (
-              <label className="flex flex-col gap-1 text-xs text-muted">Choices, separated by commas
-                <input className="input w-72 py-1 text-sm text-fg" value={fieldForm.options} placeholder="Option A, Option B" onChange={(e) => setFieldForm({ ...fieldForm, options: e.target.value })} /></label>
+              <label className="flex flex-col gap-1 text-xs text-muted">{t("Choices, separated by commas")}
+                <input className="input w-72 py-1 text-sm text-fg" value={fieldForm.options} placeholder={t("Option A, Option B")} onChange={(e) => setFieldForm({ ...fieldForm, options: e.target.value })} /></label>
             )}
             {fieldsTable === "work_items" && (
               <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" checked={fieldForm.client_visible}
-                onChange={(e) => setFieldForm({ ...fieldForm, client_visible: e.target.checked })} />Clients and consultants can see it</label>
+                onChange={(e) => setFieldForm({ ...fieldForm, client_visible: e.target.checked })} />{t("Clients and consultants can see it")}</label>
             )}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button className="btn btn-sm btn-primary" disabled={!fieldForm.label.trim()} onClick={() => fieldAction(() => saveCustomField({
               id: fieldForm.id, table_name: fieldsTable, label: fieldForm.label, type: fieldForm.type,
-              options: fieldForm.options.split(","), client_visible: fieldForm.client_visible }))}>{fieldForm.id ? "Save" : "Add column"}</button>
+              options: fieldForm.options.split(","), client_visible: fieldForm.client_visible }))}>{t(fieldForm.id ? "Save" : "Add column")}</button>
             {fieldForm.id && <>
-              <button className="btn btn-sm" onClick={() => fieldAction(() => moveCustomField(fieldForm.id!, -1), true)}>← Move left</button>
-              <button className="btn btn-sm" onClick={() => fieldAction(() => moveCustomField(fieldForm.id!, 1), true)}>Move right →</button>
+              <button className="btn btn-sm" onClick={() => fieldAction(() => moveCustomField(fieldForm.id!, -1), true)}>{rtl ? "→" : "←"} {t("Move left")}</button>
+              <button className="btn btn-sm" onClick={() => fieldAction(() => moveCustomField(fieldForm.id!, 1), true)}>{t("Move right")} {rtl ? "←" : "→"}</button>
               <button className="btn btn-sm text-[var(--bad)]" onClick={() => {
-                if (window.confirm(`Delete the column "${fieldForm.label}" and everything typed in it? This can't be undone.`)) fieldAction(() => deleteCustomField(fieldForm.id!));
-              }}>Delete column</button>
+                if (window.confirm(t("Delete the column \"{name}\" and everything typed in it? This can't be undone.", { name: fieldForm.label }))) fieldAction(() => deleteCustomField(fieldForm.id!));
+              }}>{t("Delete column")}</button>
             </>}
-            <button className="btn btn-sm" onClick={() => setFieldForm(null)}>Cancel</button>
+            <button className="btn btn-sm" onClick={() => setFieldForm(null)}>{t("Cancel")}</button>
           </div>
         </div>
       )}
 
+      {rtl && rawColumns.some((c) => c.translate) && (
+        <p className="mb-2 text-xs text-muted">{t("Item text is translated to Arabic by Claude AI. When you edit a cell you edit the original text.")}</p>
+      )}
       {(pending || error) && (
-        <p className={`mb-2 text-xs ${error ? "text-[var(--bad)]" : "text-muted"}`}>{error ? `Couldn't save: ${error}` : "Saving…"}</p>
+        <p className={`mb-2 text-xs ${error ? "text-[var(--bad)]" : "text-muted"}`}>{error ? `${t("Couldn't save:")} ${error}` : t("Saving…")}</p>
       )}
 
       {s.view === "table" && tableView}

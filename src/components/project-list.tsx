@@ -14,7 +14,7 @@ export function ProjectList({ projects, showMoney }: { projects: ProjectRow[]; s
         <tr key={p.id}>
           <td>
             <Link className="link" href={`/projects/${p.id}`}>{p.name}</Link>
-            {p.code && <span className="ml-2 text-muted">{p.code}</span>}
+            {p.code && <span className="ms-2 text-muted">{p.code}</span>}
           </td>
           <td><Badge set="project_status" value={p.status} /></td>
           <td><Progress v={p.avg_progress} /></td>

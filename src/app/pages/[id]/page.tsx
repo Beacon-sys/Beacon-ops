@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/i18n";
 import { notFound, redirect } from "next/navigation";
 import { requireMe, isInternal } from "@/lib/data";
 import { loadSource, SOURCES, type Source, type Loaded } from "@/lib/sources";
@@ -32,13 +33,13 @@ export default async function CustomPage({ params }: { params: Promise<{ id: str
   return (
     <div className="full-bleed mx-auto max-w-[1400px]">
       <div className="mb-2 flex flex-wrap items-center gap-1 text-xs text-muted">
-        <Link className="hover:underline" href="/pages">Pages</Link>
+        <Link className="hover:underline" href="/pages"><T>{"Pages"}</T></Link>
         {trail.map((t) => <span key={t.id}> / <Link className="hover:underline" href={`/pages/${t.id}`}>{t.icon ? `${t.icon} ` : ""}{t.title}</Link></span>)}
       </div>
       <PageEditor page={page} blocks={loaded} projects={projects ?? []} pages={pages}
         canManageFields={me.role === "management"} sources={SOURCES} />
       <div className="mt-10 border-t border-line pt-4">
-        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Pages inside this page</div>
+        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted"><T>{"Pages inside this page"}</T></div>
         <div className="flex flex-col">
           {children.map((c) => (
             <Link key={c.id} href={`/pages/${c.id}`} className="rounded-md px-2 py-1.5 text-sm hover:bg-[var(--neutral-bg)]">
@@ -48,7 +49,7 @@ export default async function CustomPage({ params }: { params: Promise<{ id: str
         </div>
         <form action={createPage} className="mt-1">
           <input type="hidden" name="parent_id" value={id} />
-          <button className="rounded-md px-2 py-1.5 text-sm text-muted hover:bg-[var(--neutral-bg)] hover:text-fg">+ Add a page inside</button>
+          <button className="rounded-md px-2 py-1.5 text-sm text-muted hover:bg-[var(--neutral-bg)] hover:text-fg"><T>{"+ Add a page inside"}</T></button>
         </form>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/i18n";
 import { redirect } from "next/navigation";
 import { requireMe, isInternal } from "@/lib/data";
 import { loadProject } from "@/lib/project-db";
@@ -16,7 +17,7 @@ export default async function PurchasingPage({ params }: { params: Promise<{ id:
       <Database id={`purchases:${id}`} table="purchases" rows={d.buying.rows} columns={d.buying.columns} titleKey="request"
         editable={d.canBuy} creatable={["management", "procurement", "site_ops"].includes(me.role)} createDefaults={{ project_id: id }}
         fieldsTable="purchases" canManageFields={me.role === "management"} views={["table", "board", "calendar"]} fullPage />
-      <p className="mt-2 text-xs text-muted">Approvals and PO steps are on the <Link className="link" href="/procurement?view=all">Procurement</Link> page.</p>
+      <p className="mt-2 text-xs text-muted"><T>{"Approvals and PO steps are on the"}</T> <Link className="link" href="/procurement?view=all"><T>{"Procurement"}</T></Link> <T>{"page."}</T></p>
     </div>
   );
 }

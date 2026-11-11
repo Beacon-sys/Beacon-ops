@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import { getT } from "@/lib/i18n/server";
+import { T } from "@/components/i18n";
 import Link from "next/link";
 import { requireMe, allowed, money, date, label } from "@/lib/data";
 import { PageTitle, Card, Table, Badge, Progress, Stat } from "@/components/ui";
@@ -33,8 +35,8 @@ export default async function VendorPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <div className="mb-2 text-sm"><Link className="link" href="/procurement/vendors">← Vendors & contractors</Link></div>
-      <PageTitle title={v.name} sub={[label("role", v.role), v.vendor_category, v.contact_person, v.phone, v.email].filter(Boolean).join(" · ")} />
+      <div className="mb-2 text-sm"><Link className="link" href="/procurement/vendors"><T>{"← Vendors & contractors"}</T></Link></div>
+      <PageTitle title={v.name} sub={[(await getT())(label("role", v.role)), v.vendor_category, v.contact_person, v.phone, v.email].filter(Boolean).join(" · ")} />
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Contracts" value={cs.length} />
         <Stat label="Contracted value" value={money(total) || "—"} />
@@ -80,7 +82,7 @@ export default async function VendorPage({ params }: { params: Promise<{ id: str
           ))}
         </Table>
         {(me.role === "management" || me.role === "procurement") && (
-          <Link className="btn btn-sm mt-3" href="/procurement/contracts#new">+ New contract</Link>
+          <Link className="btn btn-sm mt-3" href="/procurement/contracts#new"><T>{"+ New contract"}</T></Link>
         )}
       </Card>
 

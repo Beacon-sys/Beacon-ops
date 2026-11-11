@@ -1,4 +1,5 @@
 import { requireMe, isInternal } from "@/lib/data";
+import { T } from "@/components/i18n";
 import { PageTitle, Card, ButtonLink } from "@/components/ui";
 import { ProjectList, type ProjectRow } from "@/components/project-list";
 
@@ -12,7 +13,7 @@ export default async function Projects() {
     <>
       <PageTitle
         title="Projects"
-        action={["management", "tendering"].includes(me.role) ? <ButtonLink href="/projects/new">New project</ButtonLink> : null}
+        action={["management", "tendering"].includes(me.role) ? <ButtonLink href="/projects/new"><T>{"New project"}</T></ButtonLink> : null}
       />
       <Card>
         <ProjectList projects={(data ?? []) as ProjectRow[]} showMoney={isInternal(me.role) && me.role !== "site_ops"} />

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
+import { T } from "@/components/i18n";
 import { notFound } from "next/navigation";
 import { requireMe, isInternal, money, date, SEES_COST, SETS_COST, SETS_PRICE } from "@/lib/data";
 import { Database, type Row } from "@/components/database";
@@ -17,6 +19,7 @@ export default async function ProjectPage({ params, searchParams }: {
   const { supabase, me } = await requireMe();
   const internal = isInternal(me.role);
   const back = `/projects/${id}`;
+  const t = await getT();
 
   const [{ data: summary }, { data: names }] = await Promise.all([
     supabase.from("project_summary").select("*").eq("id", id).maybeSingle(),
@@ -63,8 +66,8 @@ export default async function ProjectPage({ params, searchParams }: {
       <ProjectHeader id={id} name={p.name} code={p.code} current="overview" internal={internal} />
       <PageTitle
         title="Overview"
-        sub={[p.location, who(p.client) && `Client: ${who(p.client)}`, who(p.consultant) && `Consultant: ${who(p.consultant)}`, who(p.pm) && `PM: ${who(p.pm)}`].filter(Boolean).join(" · ")}
-        action={<div className="flex gap-2">{(me.role === "management" || tenderOpen) && <Link className="btn" href={`${back}/edit`}>Edit project</Link>}</div>}
+        sub={[p.location, who(p.client) && `${t("Client")}: ${who(p.client)}`, who(p.consultant) && `${t("Consultant")}: ${who(p.consultant)}`, who(p.pm) && `${t("PM")}: ${who(p.pm)}`].filter(Boolean).join(" · ")}
+        action={<div className="flex gap-2">{(me.role === "management" || tenderOpen) && <Link className="btn" href={`${back}/edit`}><T>{"Edit project"}</T></Link>}</div>}
       />
       <ErrorNote error={error} />
 
@@ -85,13 +88,13 @@ export default async function ProjectPage({ params, searchParams }: {
         </div>
       )}
 
-      <Card title="Work items" action={<Link className="link text-sm" href={`/submittals?project=${id}`}>Submittals register</Link>}>
+      <Card title="Work items" action={<Link className="link text-sm" href={`/submittals?project=${id}`}><T>{"Submittals register"}</T></Link>}>
         <Database id={`work-items:${id}`} table="work_items" rows={wiDb.rows} titleKey="name"
           columns={wiDb.columns} fieldsTable="work_items" canManageFields={mgr} href={internal ? "/work-items/:id" : undefined}
           editable={canEditWork} createDefaults={{ project_id: id }} initial={{ group: "category" }} />
         {canEditWork && (
           <details className="mt-4">
-            <summary className="btn btn-sm list-none">+ Add work item</summary>
+            <summary className="btn btn-sm list-none"><T>{"+ Add work item"}</T></summary>
             <div className="mt-3">
               <WorkItemForm projectId={id} people={everyone} categories={categories} vendors={suppliers}
                 canCost={SETS_COST.includes(me.role)} canPrice={SETS_PRICE.includes(me.role)} />
@@ -107,7 +110,7 @@ export default async function ProjectPage({ params, searchParams }: {
               columns={taskDb.columns} fieldsTable="site_tasks" canManageFields={mgr} editable={canEditWork} createDefaults={{ project_id: id }} initial={{ boardBy: "status" }} />
             {canEditWork && (
               <details className="mt-4">
-                <summary className="btn btn-sm list-none">+ Add site task</summary>
+                <summary className="btn btn-sm list-none"><T>{"+ Add site task"}</T></summary>
                 <div className="mt-3"><SiteTaskForm projects={[]} workItems={wiOpts} people={everyone} projectId={id} back={back} /></div>
               </details>
             )}
@@ -115,10 +118,10 @@ export default async function ProjectPage({ params, searchParams }: {
           <Card title="Purchasing">
             <Database id={`purchases:${id}`} table="purchases" rows={buyDb.rows} titleKey="request"
               columns={buyDb.columns} fieldsTable="purchases" canManageFields={mgr} editable={canBuy} creatable={me.role !== "accountant"} createDefaults={{ project_id: id }} views={["table", "board", "calendar"]} />
-            <p className="mt-2 text-xs text-muted">Approvals and PO steps are on the <Link className="link" href="/procurement?view=all">Procurement</Link> page.</p>
+            <p className="mt-2 text-xs text-muted"><T>{"Approvals and PO steps are on the"}</T> <Link className="link" href="/procurement?view=all"><T>{"Procurement"}</T></Link> <T>{"page."}</T></p>
             {canRequest && (
               <details className="mt-4">
-                <summary className="btn btn-sm list-none">+ Request materials</summary>
+                <summary className="btn btn-sm list-none"><T>{"+ Request materials"}</T></summary>
                 <div className="mt-3"><PurchaseRequestForm projects={[]} workItems={wiOpts} suppliers={suppliers} projectId={id} back={back} /></div>
               </details>
             )}

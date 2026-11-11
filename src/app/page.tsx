@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getT } from "@/lib/i18n/server";
 import { requireMe, HOME } from "@/lib/data";
 import { PageTitle, Card } from "@/components/ui";
 import { ProjectList, type ProjectRow } from "@/components/project-list";
@@ -15,7 +16,7 @@ export default async function Home() {
     .order("name");
   return (
     <>
-      <PageTitle title={`Welcome, ${me.name}`} sub="Your projects with Beacon" />
+      <PageTitle title={(await getT())("Welcome, {name}", { name: me.name })} sub="Your projects with Beacon" />
       <Card><ProjectList projects={(data ?? []) as ProjectRow[]} showMoney={false} /></Card>
     </>
   );

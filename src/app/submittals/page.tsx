@@ -1,4 +1,5 @@
 import { requireMe, isInternal } from "@/lib/data";
+import { T, TOption } from "@/components/i18n";
 import { Database, type Row } from "@/components/database";
 import { submittalColumns } from "@/lib/db-columns";
 import { withCustomFields } from "@/lib/custom-fields";
@@ -42,13 +43,13 @@ export default async function Submittals({ searchParams }: {
       <ErrorNote error={sp.error} />
       <form action="/submittals" className="mb-4 flex flex-wrap gap-2">
         <select name="project" defaultValue={projectId} className="input w-64">
-          <option value="">All projects</option>
+          <TOption value="" label="All projects" />
           {(projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <select name="status" defaultValue={sp.status ?? ""} className="input w-44">
-          <option value="">Any status</option><option value="open">Still open</option>
+          <TOption value="" label="Any status" /><TOption value="open" label="Still open" />
         </select>
-        <button className="btn btn-sm">Filter</button>
+        <button className="btn btn-sm"><T>{"Filter"}</T></button>
       </form>
 
       <Card>
@@ -59,7 +60,7 @@ export default async function Submittals({ searchParams }: {
 
       {canEdit && internal && (
         <Card title="New submittal">
-          {projectId ? <SubmittalForm projectId={projectId} back={back} /> : <p className="text-sm text-muted">Choose a project above to add a submittal, or add one from a work item&apos;s page.</p>}
+          {projectId ? <SubmittalForm projectId={projectId} back={back} /> : <p className="text-sm text-muted"><T>{"Choose a project above to add a submittal, or add one from a work item's page."}</T></p>}
         </Card>
       )}
     </>
@@ -83,7 +84,7 @@ function SubmittalForm({ s, projectId, back }: { s?: Sub; projectId?: string; ba
       <Field label="Returned on"><input name="returned_on" type="date" defaultValue={v("returned_on")} className="input" /></Field>
       <div className="sm:col-span-3"><Field label="Document link"><input name="link" type="url" defaultValue={v("link")} placeholder="https://drive.google.com/…" className="input" /></Field></div>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} defaultValue={v("notes")} className="input" /></Field></div>
-      <div className="sm:col-span-3"><button className="btn btn-primary">{s ? "Save" : "Add submittal"}</button></div>
+      <div className="sm:col-span-3"><button className="btn btn-primary"><T>{s ? "Save" : "Add submittal"}</T></button></div>
     </form>
   );
 }

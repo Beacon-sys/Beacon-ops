@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { T } from "@/components/i18n";
 import Link from "next/link";
 import { requireMe, allowed, money, date } from "@/lib/data";
 import { PageTitle, Card, Table, Badge, Progress, Stat } from "@/components/ui";
@@ -35,7 +36,7 @@ export default async function ContractPage({ params, searchParams }: {
 
   return (
     <>
-      <div className="mb-2 text-sm"><Link className="link" href="/procurement/contracts">← Contracts</Link></div>
+      <div className="mb-2 text-sm"><Link className="link" href="/procurement/contracts"><T>{"← Contracts"}</T></Link></div>
       <PageTitle title={`${c.number ? c.number + " · " : ""}${c.title}`}
         sub={[vendor?.name, project?.name].filter(Boolean).join(" · ")}
         action={<Badge set="contract_status" value={c.status} />} />
@@ -52,7 +53,7 @@ export default async function ContractPage({ params, searchParams }: {
           <form action={saveContractItems}>
             <input type="hidden" name="contract_id" value={id} />
             <ItemsTable rows={rows} editable contractId={id} />
-            {rows.length > 0 && <button className="btn btn-sm btn-primary mt-3">Save rates and dates</button>}
+            {rows.length > 0 && <button className="btn btn-sm btn-primary mt-3"><T>{"Save rates and dates"}</T></button>}
           </form>
         ) : <ItemsTable rows={rows} contractId={id} />}
       </Card>
@@ -65,13 +66,13 @@ export default async function ContractPage({ params, searchParams }: {
               {available.map((w) => (
                 <label key={w.id} className="flex items-start gap-3 border-b border-line px-3 py-2 text-sm last:border-0">
                   <input type="checkbox" name="work_item_id" value={w.id} className="mt-1" />
-                  <span className="flex-1"><span className="mr-2 text-muted">{w.boq_ref}</span>{w.name}</span>
+                  <span className="flex-1"><span className="me-2 text-muted">{w.boq_ref}</span>{w.name}</span>
                   <span className="text-xs text-muted">{num(w.quantity)} {w.unit}</span>
                 </label>
               ))}
             </div>
-            <p className="text-xs text-muted">After adding, enter the contractor&apos;s rate and dates in the table above. Dates default to the work item&apos;s planned dates.</p>
-            <div><button className="btn btn-sm btn-primary">Add selected</button></div>
+            <p className="text-xs text-muted"><T>{"After adding, enter the contractor's rate and dates in the table above. Dates default to the work item's planned dates."}</T></p>
+            <div><button className="btn btn-sm btn-primary"><T>{"Add selected"}</T></button></div>
           </form>
         </Card>
       )}
@@ -124,7 +125,7 @@ function ItemsTable({ rows, editable, contractId }: {
             {editable && (
               <td>
                 <button formAction={removeContractItem} name="remove_id" value={r.work_item_id} className="btn btn-sm"
-                  formNoValidate>Remove</button>
+                  formNoValidate><T>{"Remove"}</T></button>
                 <input type="hidden" name="contract_id" value={contractId} />
               </td>
             )}
@@ -132,7 +133,7 @@ function ItemsTable({ rows, editable, contractId }: {
         );
       })}
       {rows.length > 0 && (
-        <tr className="font-semibold"><td colSpan={4}>Total</td><td className="tabular-nums">{money(total)}</td><td colSpan={editable ? 5 : 4} /></tr>
+        <tr className="font-semibold"><td colSpan={4}><T>{"Total"}</T></td><td className="tabular-nums">{money(total)}</td><td colSpan={editable ? 5 : 4} /></tr>
       )}
     </Table>
   );
