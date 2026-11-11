@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createPage } from "@/app/page-actions";
+import { useT } from "./i18n";
+import { LanguageSwitch } from "./language-switch";
 
 export type PageItem = { id: string; parent_id: string | null; title: string; icon: string | null };
 
@@ -31,6 +33,7 @@ function Icon({ name }: { name: string }) {
 export function Sidebar({ items, name, roleLabel, signOut, pages }: {
   items: NavItem[]; name: string; roleLabel: string; signOut: () => Promise<void>; pages?: PageItem[];
 }) {
+  const t = useT();
   const path = usePathname();
   const search = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -78,9 +81,9 @@ export function Sidebar({ items, name, roleLabel, signOut, pages }: {
                 <Icon name={n.icon} />{n.label}
               </Link>
               {kids.length > 0 && (
-                <button type="button" aria-label={`${isOpen(n) ? "Hide" : "Show"} ${n.label} pages`} aria-expanded={isOpen(n)}
+                <button type="button" aria-label={t(isOpen(n) ? "Hide {name} pages" : "Show {name} pages", { name: n.label })} aria-expanded={isOpen(n)}
                   onClick={() => setExpanded({ ...expanded, [n.href]: !isOpen(n) })}
-                  className="mr-1 rounded-md p-1.5 hover:bg-[var(--neutral-bg)]">
+                  className="me-1 rounded-md p-1.5 hover:bg-[var(--neutral-bg)]">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2"
                     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
                     className={`transition-transform ${isOpen(n) ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
@@ -88,18 +91,18 @@ export function Sidebar({ items, name, roleLabel, signOut, pages }: {
               )}
             </div>
             {kids.length > 0 && isOpen(n) && (
-              <div className="mb-1 ml-[1.35rem] mt-0.5 flex flex-col border-l border-line pl-3">
+              <div className="mb-1 ms-[1.35rem] mt-0.5 flex flex-col border-s border-line ps-3">
                 {kids.map((c) => c.children?.length ? (
                   <div key={c.href}>
                     <div className={`flex items-center rounded-md ${inProject(c) ? "text-[var(--brand)]" : "text-muted hover:text-fg"}`}>
                       <Link href={c.href} onClick={() => setOpen(false)}
                         className={`flex-1 truncate px-2 py-1.5 text-[13px] ${inProject(c) ? "font-medium" : ""}`}>{c.label}</Link>
-                      <button type="button" aria-label={`${subOpen(c) ? "Hide" : "Show"} ${c.label} pages`} aria-expanded={subOpen(c)}
+                      <button type="button" aria-label={t(subOpen(c) ? "Hide {name} pages" : "Show {name} pages", { name: c.label })} aria-expanded={subOpen(c)}
                         onClick={() => setExpanded({ ...expanded, [c.href]: !subOpen(c) })}
                         className="rounded-md p-1 hover:bg-[var(--neutral-bg)]">{chevron(subOpen(c))}</button>
                     </div>
                     {subOpen(c) && (
-                      <div className="mb-1 ml-2 flex flex-col border-l border-line pl-2">
+                      <div className="mb-1 ms-2 flex flex-col border-s border-line ps-2">
                         {c.children.map((g) => (
                           <Link key={g.href} href={g.href} onClick={() => setOpen(false)}
                             className={`truncate rounded-md px-2 py-1 text-[12.5px] ${subActive(g.href) ? "font-medium text-[var(--brand)]" : "text-muted hover:text-fg"}`}>
@@ -132,14 +135,14 @@ export function Sidebar({ items, name, roleLabel, signOut, pages }: {
       const kids = (pages ?? []).some((x) => x.parent_id === p.id);
       return (
         <div key={p.id}>
-          <div style={{ paddingLeft: depth * 12 }}
+          <div style={{ paddingInlineStart: depth * 12 }}
             className={`flex items-center rounded-md ${currentPage === p.id ? "bg-[var(--info-bg)] text-[var(--brand)]" : "text-muted hover:bg-[var(--neutral-bg)] hover:text-fg"}`}>
-            <button type="button" aria-label={pageOpen(p.id) ? "Collapse" : "Expand"} onClick={() => setExpanded({ ...expanded, [`page:${p.id}`]: !pageOpen(p.id) })}
+            <button type="button" aria-label={t(pageOpen(p.id) ? "Collapse" : "Expand")} onClick={() => setExpanded({ ...expanded, [`page:${p.id}`]: !pageOpen(p.id) })}
               className={`rounded p-1 ${kids ? "" : "invisible"}`}>
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
-                aria-hidden="true" className={`transition-transform ${pageOpen(p.id) ? "rotate-90" : ""}`}><path d="m9 6 6 6-6 6" /></svg>
+                aria-hidden="true" className={`transition-transform ${pageOpen(p.id) ? "rotate-90" : "rtl:rotate-180"}`}><path d="m9 6 6 6-6 6" /></svg>
             </button>
-            <Link href={`/pages/${p.id}`} onClick={() => setOpen(false)} className="flex-1 truncate py-1.5 pr-2 text-[13px]">{p.icon ?? "📄"} {p.title}</Link>
+            <Link href={`/pages/${p.id}`} onClick={() => setOpen(false)} className="flex-1 truncate py-1.5 pe-2 text-[13px]">{p.icon ?? "📄"} {p.title}</Link>
           </div>
           {kids && pageOpen(p.id) && pageTree(p.id, depth + 1)}
         </div>
@@ -148,17 +151,18 @@ export function Sidebar({ items, name, roleLabel, signOut, pages }: {
   const pagesNav = pages && (
     <div>
       <div className="mb-1 mt-4 flex items-center justify-between px-3 text-xs font-medium uppercase tracking-wide text-muted">
-        <Link href="/pages" className="hover:text-fg">Pages</Link>
-        <form action={createPage}><button title="New page" className="rounded px-1.5 text-base leading-none hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></form>
+        <Link href="/pages" className="hover:text-fg">{t("Pages")}</Link>
+        <form action={createPage}><button title={t("New page")} className="rounded px-1.5 text-base leading-none hover:bg-[var(--neutral-bg)] hover:text-fg">+</button></form>
       </div>
-      {pages.length ? pageTree(null, 0) : <form action={createPage}><button className="px-3 py-1.5 text-[13px] text-muted hover:text-fg">+ New page</button></form>}
+      {pages.length ? pageTree(null, 0) : <form action={createPage}><button className="px-3 py-1.5 text-[13px] text-muted hover:text-fg">+ {t("New page")}</button></form>}
     </div>
   );
   const footer = (
     <div className="border-t border-line pt-4 text-sm">
       <div className="font-medium">{name}</div>
       <div className="mb-3 text-muted">{roleLabel}</div>
-      <form action={signOut}><button className="btn btn-sm w-full justify-center">Sign out</button></form>
+      <LanguageSwitch className="mb-2" />
+      <form action={signOut}><button className="btn btn-sm w-full justify-center">{t("Sign out")}</button></form>
     </div>
   );
 
@@ -166,8 +170,8 @@ export function Sidebar({ items, name, roleLabel, signOut, pages }: {
     <>
       {/* Phone: top bar with menu button */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-surface px-4 py-3 md:hidden">
-        <Link href="/" className="font-semibold tracking-tight">Beacon Operations</Link>
-        <button className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Close" : "Menu"}</button>
+        <Link href="/" className="font-semibold tracking-tight">{t("Beacon Operations")}</Link>
+        <button className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>{t(open ? "Close" : "Menu")}</button>
       </header>
       {open && (
         <div className="fixed inset-0 z-10 bg-black/30 md:hidden" onClick={() => setOpen(false)}>
@@ -177,9 +181,9 @@ export function Sidebar({ items, name, roleLabel, signOut, pages }: {
         </div>
       )}
       {/* Desktop: fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col justify-between border-r border-line bg-surface p-4 md:flex">
-        <div className="-mr-2 overflow-y-auto pr-2">
-          <Link href="/" className="mb-6 block px-3 pt-1 text-lg font-semibold tracking-tight">Beacon Operations</Link>
+      <aside className="fixed inset-y-0 start-0 hidden w-60 flex-col justify-between border-e border-line bg-surface p-4 md:flex">
+        <div className="-me-2 overflow-y-auto pe-2">
+          <Link href="/" className="mb-6 block px-3 pt-1 text-lg font-semibold tracking-tight">{t("Beacon Operations")}</Link>
           {nav}
           {pagesNav}
         </div>

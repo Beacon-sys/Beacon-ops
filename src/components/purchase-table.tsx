@@ -1,4 +1,5 @@
 import { updatePurchase } from "@/app/actions";
+import { T } from "@/components/i18n";
 import { money, date, type Role } from "@/lib/data";
 import { Table, Badge, Select, PersonSelect, Field } from "@/components/ui";
 
@@ -44,11 +45,11 @@ export function PurchaseTable({ rows, role, suppliers, back, showProject = true 
             {showMoney && <td className="tabular-nums">{money(x.amount)}</td>}
             <td><Badge set="purchase_status" value={x.status} /></td>
             <td><Badge set="payment_status" value={x.payment_status} /></td>
-            <td className="text-right">
+            <td className="text-end">
               {(canProcure || canPay) && (
-                <details className="relative inline-block text-left">
-                  <summary className="btn btn-sm list-none">Update</summary>
-                  <div className="absolute right-0 z-10 mt-1 w-72 rounded-xl border border-line bg-surface p-3 shadow-lg">
+                <details className="relative inline-block text-start">
+                  <summary className="btn btn-sm list-none"><T>{"Update"}</T></summary>
+                  <div className="absolute end-0 z-10 mt-1 w-72 rounded-xl border border-line bg-surface p-3 shadow-lg">
                     {canProcure && (
                       <>
                         <div className="mb-2 flex flex-wrap gap-1">
@@ -57,7 +58,7 @@ export function PurchaseTable({ rows, role, suppliers, back, showProject = true 
                               <input type="hidden" name="id" value={x.id} />
                               <input type="hidden" name="back" value={back} />
                               <input type="hidden" name="status" value={n.to} />
-                              <button className="btn btn-sm">{n.label}</button>
+                              <button className="btn btn-sm"><T>{n.label}</T></button>
                             </form>
                           ))}
                         </div>
@@ -67,7 +68,7 @@ export function PurchaseTable({ rows, role, suppliers, back, showProject = true 
                           <Field label="Vendor"><PersonSelect name="supplier_id" people={suppliers} defaultValue={x.supplier_id} /></Field>
                           <Field label="PO number"><input name="po_number" defaultValue={x.po_number ?? ""} className="input" /></Field>
                           <Field label="Amount (EGP)"><input name="amount" type="number" step="0.01" defaultValue={x.amount ?? ""} className="input" /></Field>
-                          <button className="btn btn-sm btn-primary justify-center">Save order details</button>
+                          <button className="btn btn-sm btn-primary justify-center"><T>{"Save order details"}</T></button>
                         </form>
                       </>
                     )}
@@ -77,7 +78,7 @@ export function PurchaseTable({ rows, role, suppliers, back, showProject = true 
                         <input type="hidden" name="back" value={back} />
                         <Field label="Payment"><Select name="payment_status" set="payment_status" defaultValue={x.payment_status} /></Field>
                         <Field label="Invoice no."><input name="invoice_no" defaultValue={x.invoice_no ?? ""} className="input" /></Field>
-                        <button className="btn btn-sm btn-primary justify-center">Save payment</button>
+                        <button className="btn btn-sm btn-primary justify-center"><T>{"Save payment"}</T></button>
                       </form>
                     )}
                   </div>

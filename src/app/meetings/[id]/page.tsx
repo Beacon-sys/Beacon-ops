@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/i18n";
 import { notFound, redirect } from "next/navigation";
 import { requireMe, isInternal, date, label, LABELS } from "@/lib/data";
 import { ProjectHeader } from "@/components/project-tabs";
@@ -28,10 +29,10 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
   return (
     <div className="full-bleed">
       <ProjectHeader id={project.id} name={project.name} code={project.code} current="meetings" internal />
-      <div className="mb-1 text-xs text-muted"><Link className="hover:underline" href={`/projects/${project.id}/meetings`}>Meetings</Link> / {date(m.meeting_date)}</div>
+      <div className="mb-1 text-xs text-muted"><Link className="hover:underline" href={`/projects/${project.id}/meetings`}><T>{"Meetings"}</T></Link> / {date(m.meeting_date)}</div>
       <MeetingNotes meeting={m} editable={can} kindLabel={label("meeting_kind", m.kind)} kinds={Object.entries(LABELS.meeting_kind)} />
-      <h2 className="mb-2 mt-8 text-lg font-semibold">Actions</h2>
-      <p className="mb-3 text-sm text-muted">Each action is a site task on this project. Assign it to a person; actions for the client or consultant also appear in their action tracker.</p>
+      <h2 className="mb-2 mt-8 text-lg font-semibold"><T>{"Actions"}</T></h2>
+      <p className="mb-3 text-sm text-muted"><T>{"Each action is a site task on this project. Assign it to a person; actions for the client or consultant also appear in their action tracker."}</T></p>
       <Database id={`meeting-actions:${id}`} table="site_tasks" rows={db.rows} columns={db.columns} titleKey="task"
         editable={can} createDefaults={{ project_id: project.id, meeting_id: id }} views={["table", "board", "list"]}
         initial={{ hidden: ["type", "work_item_id", "planned_start", "started_on", "done_on", "notes"] }} />

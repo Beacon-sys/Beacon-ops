@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/i18n";
 import { redirect } from "next/navigation";
 import { requireMe, date } from "@/lib/data";
 import { PageTitle, Stat, Card, Table, Badge } from "@/components/ui";
@@ -40,7 +41,7 @@ export default async function Management() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Upcoming site tasks" action={<Link className="link text-sm" href="/operations">Operations</Link>}>
+        <Card title="Upcoming site tasks" action={<Link className="link text-sm" href="/operations"><T>{"Operations"}</T></Link>}>
           <Table head={["Task", "Project", "Due", "Status"]} empty={!tasks.data?.length}>
             {(tasks.data ?? []).map((t) => (
               <tr key={t.id}>
@@ -52,7 +53,7 @@ export default async function Management() {
             ))}
           </Table>
         </Card>
-        <Card title="Open purchases" action={<Link className="link text-sm" href="/procurement">Procurement</Link>}>
+        <Card title="Open purchases" action={<Link className="link text-sm" href="/procurement"><T>{"Procurement"}</T></Link>}>
           <Table head={["Request", "Project", "Needed by", "Status"]} empty={!purchases.data?.length}>
             {(purchases.data ?? []).map((x) => (
               <tr key={x.id}>
@@ -66,7 +67,7 @@ export default async function Management() {
         </Card>
       </div>
 
-      <Card title="Projects" action={<Link className="link text-sm" href="/projects">All projects</Link>}>
+      <Card title="Projects" action={<Link className="link text-sm" href="/projects"><T>{"All projects"}</T></Link>}>
         <ProjectList projects={projects} showMoney />
       </Card>
     </>

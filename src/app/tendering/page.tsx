@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/components/i18n";
 import Link from "next/link";
 import { requireMe, allowed, money, date } from "@/lib/data";
 import { PageTitle, Card, Table, Badge, Stat, ButtonLink } from "@/components/ui";
@@ -20,7 +21,7 @@ export default async function Tendering() {
   return (
     <>
       <PageTitle title="Tendering" sub="Projects being priced. When a tender is won, set its status to Active to hand it to Operations."
-        action={<ButtonLink href="/projects/new">New tender</ButtonLink>} />
+        action={<ButtonLink href="/projects/new"><T>{"New tender"}</T></ButtonLink>} />
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
         <Stat label="Open tenders" value={tenders?.length ?? 0} />
         <Stat label="Total tender value" value={money(total) || "—"} />
@@ -30,7 +31,7 @@ export default async function Tendering() {
         <Table head={["Tender", "Client", "Location", "BOQ items", "Value", "Created"]} empty={!tenders?.length}>
           {(tenders ?? []).map((t) => (
             <tr key={t.id}>
-              <td><Link className="link" href={`/projects/${t.id}`}>{t.name}</Link>{t.code && <span className="ml-2 text-muted">{t.code}</span>}</td>
+              <td><Link className="link" href={`/projects/${t.id}`}>{t.name}</Link>{t.code && <span className="ms-2 text-muted">{t.code}</span>}</td>
               <td>{clientName(t.client_id)}</td>
               <td>{t.location}</td>
               <td className="tabular-nums">{t.work_item_count}</td>

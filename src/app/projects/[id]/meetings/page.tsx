@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { T } from "@/components/i18n";
 import { requireMe, isInternal } from "@/lib/data";
 import { ProjectHeader } from "@/components/project-tabs";
 import { Database } from "@/components/database";
@@ -18,7 +19,7 @@ export default async function ProjectMeetings({ params }: { params: Promise<{ id
       <ProjectHeader id={id} name={project.name} code={project.code} current="meetings" internal />
       <Database id={`meetings:${id}`} table="meetings" rows={rows} columns={meetingColumns()} titleKey="title" href="/meetings/:id"
         editable={can} createDefaults={{ project_id: id }} views={["table", "calendar", "list"]} fullPage />
-      <p className="mt-2 text-xs text-muted">Add a meeting, then click Open on it to write the notes and add its actions.</p>
+      <p className="mt-2 text-xs text-muted"><T>{"Add a meeting, then click Open on it to write the notes and add its actions."}</T></p>
     </div>
   );
 }

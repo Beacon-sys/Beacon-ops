@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/components/i18n";
 import Link from "next/link";
 import { requireMe, allowed } from "@/lib/data";
 import { PageTitle, Card } from "@/components/ui";
@@ -10,7 +11,7 @@ import { PurchaseRequestForm } from "@/components/forms";
 import { ErrorNote } from "@/components/error-note";
 
 const VIEWS: Record<string, { label: string; apply: (q: any) => any }> = { // eslint-disable-line @typescript-eslint/no-explicit-any
-  open: { label: "Open", apply: (q) => q.not("status", "in", "(delivered,rejected)") },
+  open: { label: "Open requests", apply: (q) => q.not("status", "in", "(delivered,rejected)") },
   approval: { label: "Needs approval", apply: (q) => q.in("status", ["requested", "getting_quotes"]) },
   to_pay: { label: "To pay", apply: (q) => q.neq("status", "rejected").neq("payment_status", "paid").in("status", ["po_issued", "delivered"]) },
   all: { label: "All", apply: (q) => q },
@@ -39,7 +40,7 @@ export default async function Procurement({ searchParams }: { searchParams: Prom
       <ErrorNote error={sp.error} />
       <div className="mb-4 flex flex-wrap gap-2">
         {Object.entries(VIEWS).map(([k, v]) => (
-          <Link key={k} href={`/procurement?view=${k}`} className={`btn btn-sm ${k === view ? "btn-primary" : ""}`}>{v.label}</Link>
+          <Link key={k} href={`/procurement?view=${k}`} className={`btn btn-sm ${k === view ? "btn-primary" : ""}`}><T>{v.label}</T></Link>
         ))}
       </div>
       <Card>

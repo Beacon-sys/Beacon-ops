@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/i18n";
 
 /** Title and page tabs shown at the top of every project sub-page. */
 export function ProjectHeader({ id, name, code, current, internal }: {
@@ -13,11 +14,11 @@ export function ProjectHeader({ id, name, code, current, internal }: {
   ];
   return (
     <div className="mb-4">
-      <div className="text-xs text-muted"><Link className="hover:underline" href="/projects">Projects</Link> / {code ?? ""}</div>
+      <div className="text-xs text-muted"><Link className="hover:underline" href="/projects"><T>{"Projects"}</T></Link> / {code ?? ""}</div>
       <h1 className="mb-3 text-2xl font-semibold tracking-tight">{name}</h1>
       <div className="flex gap-1 overflow-x-auto border-b border-line">
         {tabs.map(([k, l, h]) => (
-          <Link key={k} href={h} className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm ${k === current ? "border-[var(--brand)] font-medium text-fg" : "border-transparent text-muted hover:text-fg"}`}>{l}</Link>
+          <Link key={k} href={h} className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm ${k === current ? "border-[var(--brand)] font-medium text-fg" : "border-transparent text-muted hover:text-fg"}`}><T>{l}</T></Link>
         ))}
       </div>
     </div>

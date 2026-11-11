@@ -21,7 +21,7 @@ export default async function ActionTracker() {
     return { ...t, project_name: nm(t.project), assignee_name: nm(t.assignee), meeting_title: m ? `${m.title} (${m.meeting_date})` : null };
   }) as Row[];
   const base = taskColumns(people ?? [], [], true).filter((c) => !["type", "work_item_id", "planned_start", "started_on"].includes(c.key));
-  const meetingCol: Column = { key: "meeting_title", label: "From meeting", type: "text" };
+  const meetingCol: Column = { key: "meeting_title", label: "From meeting", type: "text", translate: true };
   const columns = [...base.slice(0, 2), meetingCol, ...base.slice(2)]
     .map((c) => (internal ? c : { ...c, editable: false }));
   return (

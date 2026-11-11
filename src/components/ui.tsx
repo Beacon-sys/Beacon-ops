@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { LABELS, type LabelSet } from "@/lib/data";
+import { T, TOptions } from "./i18n";
 
 export function PageTitle({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {sub && <p className="mt-1 text-sm text-muted">{sub}</p>}
+        <h1 className="text-2xl font-semibold tracking-tight"><T>{title}</T></h1>
+        {sub && <p className="mt-1 text-sm text-muted"><T>{sub}</T></p>}
       </div>
       {action}
     </div>
@@ -18,7 +19,7 @@ export function Card({ title, children, action, id }: { title?: string; children
     <section id={id} className="mb-6 scroll-mt-20 rounded-xl border border-line bg-surface">
       {(title || action) && (
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 className="font-medium">{title}</h2>
+          <h2 className="font-medium">{title && <T>{title}</T>}</h2>
           {action}
         </div>
       )}
@@ -30,7 +31,7 @@ export function Card({ title, children, action, id }: { title?: string; children
 export function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-surface px-4 py-3">
-      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-muted"><T>{label}</T></div>
       <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
     </div>
   );
@@ -50,7 +51,7 @@ export function Badge({ set, value }: { set: LabelSet; value: string | null }) {
   const tone = TONE[value] ?? "neutral";
   return (
     <span className={`badge badge-${tone}`}>
-      {(LABELS[set] as Record<string, string>)[value] ?? value}
+      <T>{(LABELS[set] as Record<string, string>)[value] ?? value}</T>
     </span>
   );
 }
@@ -60,15 +61,15 @@ export function Table({ head, children, empty }: { head: string[]; children: Rea
     <div className="-mx-4 overflow-x-auto">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
-          <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-            {head.map((h) => <th key={h} className="px-4 py-2 font-medium">{h}</th>)}
+          <tr className="border-b border-line text-start text-xs uppercase tracking-wide text-muted">
+            {head.map((h) => <th key={h} className="px-4 py-2 text-start font-medium"><T>{h}</T></th>)}
           </tr>
         </thead>
         <tbody className="[&>tr]:border-b [&>tr]:border-line [&>tr:last-child]:border-0 [&_td]:px-4 [&_td]:py-2 [&_td]:align-top">
           {children}
         </tbody>
       </table>
-      {empty && <p className="px-4 py-6 text-center text-sm text-muted">Nothing here yet.</p>}
+      {empty && <p className="px-4 py-6 text-center text-sm text-muted"><T>Nothing here yet.</T></p>}
     </div>
   );
 }
@@ -76,7 +77,7 @@ export function Table({ head, children, empty }: { head: string[]; children: Rea
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-muted">{label}</span>
+      <span className="text-muted"><T>{label}</T></span>
       {children}
     </label>
   );
@@ -88,7 +89,7 @@ export function Select({ name, set, defaultValue, required, blank }: {
   return (
     <select name={name} defaultValue={defaultValue ?? ""} required={required} className="input">
       {blank && <option value="">—</option>}
-      {Object.entries(LABELS[set]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      <TOptions options={Object.entries(LABELS[set])} />
     </select>
   );
 }

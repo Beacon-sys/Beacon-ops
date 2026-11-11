@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/components/i18n";
 import Link from "next/link";
 import { requireMe, allowed } from "@/lib/data";
 import { PageTitle, Card } from "@/components/ui";
@@ -39,10 +40,10 @@ export default async function Operations({ searchParams }: { searchParams: Promi
       <PageTitle title="Operations" sub="Projects on site, site tasks and material requests" />
       <ErrorNote error={sp.error} />
       <Card title="Projects on site"><ProjectList projects={(active.data ?? []) as ProjectRow[]} showMoney={false} /></Card>
-      <h2 className="mb-3 text-lg font-semibold">Site tasks</h2>
+      <h2 className="mb-3 text-lg font-semibold"><T>{"Site tasks"}</T></h2>
       <div className="mb-4 flex flex-wrap gap-2">
         {[["mine", "My tasks"], ["open", "All open"], ["all", "Everything"]].map(([k, l]) => (
-          <Link key={k} href={`/operations?view=${k}`} className={`btn btn-sm ${k === view ? "btn-primary" : ""}`}>{l}</Link>
+          <Link key={k} href={`/operations?view=${k}`} className={`btn btn-sm ${k === view ? "btn-primary" : ""}`}><T>{l}</T></Link>
         ))}
       </div>
       <Card><Database id={`ops-tasks:${view}`} table="site_tasks" rows={db.rows} titleKey="task" editable creatable={false}

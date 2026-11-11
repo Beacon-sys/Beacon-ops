@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { T, TOption, useLang, useT } from "@/components/i18n";
+import { localeOf } from "@/lib/i18n";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cpm, type Dep } from "@/lib/cpm";
@@ -24,7 +26,8 @@ const MS_ROW = 40;
 
 const toDay = (d: string) => Math.floor(Date.parse(d.slice(0, 10) + "T00:00:00Z") / DAY);
 const toIso = (n: number) => new Date(n * DAY).toISOString().slice(0, 10);
-const fmt = (n: number, o: Intl.DateTimeFormatOptions) => new Date(n * DAY).toLocaleDateString("en-GB", { timeZone: "UTC", ...o });
+let fmtLocale = "en-GB";   // set from the person's language on each render
+const fmt = (n: number, o: Intl.DateTimeFormatOptions) => new Date(n * DAY).toLocaleDateString(fmtLocale, { timeZone: "UTC", ...o });
 const short = (n: number) => fmt(n, { day: "numeric", month: "short" });
 
 type Drag =
@@ -36,6 +39,8 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
   rows: GRow[]; deps: Dep[]; milestones: GMilestone[]; zoom: Zoom; editable: boolean; projectId: string | null;
 }) {
   const router = useRouter();
+  const t = useT();
+  fmtLocale = localeOf(useLang());
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -160,7 +165,7 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
   };
 
   if (!rows.length && !milestones.length) {
-    return <p className="py-10 text-center text-sm text-muted">Nothing with dates yet. Add planned start and finish dates to work items or site tasks.</p>;
+    return <p className="py-10 text-center text-sm text-muted"><T>{"Nothing with dates yet. Add planned start and finish dates to work items or site tasks."}</T></p>;
   }
 
   return (
@@ -168,7 +173,7 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
       {/* Toolbar */}
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         {wiNodes.length > 0 && (
-          <label className="flex items-center gap-1.5"><input type="checkbox" checked={showCritical} onChange={(e) => setShowCritical(e.target.checked)} />Show critical path</label>
+          <label className="flex items-center gap-1.5"><input type="checkbox" checked={showCritical} onChange={(e) => setShowCritical(e.target.checked)} /><T>{"Show critical path"}</T></label>
         )}
         {editable && pushNeeded > 0 && (
           <button className="btn btn-sm" onClick={reschedule} disabled={pending}>
@@ -176,48 +181,48 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
           </button>
         )}
         {editable && projectId && (
-          <button className="btn btn-sm" onClick={() => setMsForm({ name: "", date: toIso(today) })}>+ Milestone</button>
+          <button className="btn btn-sm" onClick={() => setMsForm({ name: "", date: toIso(today) })}><T>{"+ Milestone"}</T></button>
         )}
-        {sched.cycle && <span className="text-[var(--bad)]">Some dependencies loop back on themselves; remove one to fix the critical path.</span>}
-        {pending && <span className="text-muted">Saving…</span>}
-        {error && <span className="text-[var(--bad)]">Couldn&apos;t save: {error}</span>}
-        {editable && <span className="ml-auto text-xs text-muted">Drag bars to move · drag a bar&apos;s end to resize · drag its dot onto another bar to link · click a link to edit · double-click a milestone to edit</span>}
+        {sched.cycle && <span className="text-[var(--bad)]">{t("Some dependencies loop back on themselves; remove one to fix the critical path.")}</span>}
+        {pending && <span className="text-muted"><T>{"Saving…"}</T></span>}
+        {error && <span className="text-[var(--bad)]">{t("Couldn't save:")} {error}</span>}
+        {editable && <span className="ms-auto text-xs text-muted">{t("Drag bars to move · drag a bar's end to resize · drag its dot onto another bar to link · click a link to edit · double-click a milestone to edit")}</span>}
       </div>
 
       {msForm && (
         <form className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line p-3 text-sm"
           onSubmit={(e) => { e.preventDefault(); const f = msForm; setMsForm(null);
             run(() => saveMilestone({ id: f.id, project_id: projectId!, name: f.name, planned_date: f.date, actual_date: f.actual || null })); }}>
-          <label className="flex flex-col gap-1"><span className="text-muted">Milestone</span>
-            <input className="input w-64" required value={msForm.name} onChange={(e) => setMsForm({ ...msForm, name: e.target.value })} placeholder="e.g. Slab handover" /></label>
-          <label className="flex flex-col gap-1"><span className="text-muted">Date</span>
+          <label className="flex flex-col gap-1"><span className="text-muted"><T>{"Milestone"}</T></span>
+            <input className="input w-64" required value={msForm.name} onChange={(e) => setMsForm({ ...msForm, name: e.target.value })} placeholder={t("e.g. Slab handover")} /></label>
+          <label className="flex flex-col gap-1"><span className="text-muted"><T>{"Date"}</T></span>
             <input className="input" type="date" required value={msForm.date} onChange={(e) => setMsForm({ ...msForm, date: e.target.value })} /></label>
           {msForm.id && (
-            <label className="flex flex-col gap-1"><span className="text-muted">Achieved on</span>
+            <label className="flex flex-col gap-1"><span className="text-muted"><T>{"Achieved on"}</T></span>
               <input className="input" type="date" value={msForm.actual ?? ""} onChange={(e) => setMsForm({ ...msForm, actual: e.target.value })} /></label>
           )}
-          <button className="btn btn-sm btn-primary">{msForm.id ? "Save" : "Add"}</button>
-          {msForm.id && <button type="button" className="btn btn-sm" onClick={() => { const id = msForm.id!; setMsForm(null); run(() => deleteMilestone(id)); }}>Delete</button>}
-          <button type="button" className="btn btn-sm" onClick={() => setMsForm(null)}>Cancel</button>
+          <button className="btn btn-sm btn-primary">{t(msForm.id ? "Save" : "Add")}</button>
+          {msForm.id && <button type="button" className="btn btn-sm" onClick={() => { const id = msForm.id!; setMsForm(null); run(() => deleteMilestone(id)); }}><T>{"Delete"}</T></button>}
+          <button type="button" className="btn btn-sm" onClick={() => setMsForm(null)}><T>{"Cancel"}</T></button>
         </form>
       )}
 
-      <div className="-mx-4 overflow-x-auto" onPointerMove={onMove} onPointerUp={onUp}>
+      <div dir="ltr" className="-mx-4 overflow-x-auto" onPointerMove={onMove} onPointerUp={onUp}>
         <div style={{ width: LABEL_W + width + VAR_W }} className="relative select-none text-sm">
           {/* Header */}
           <div className="sticky top-0 z-10 flex border-b border-line bg-surface" style={{ height: HEAD }}>
-            <div style={{ width: LABEL_W }} className="sticky left-0 z-20 shrink-0 border-r border-line bg-surface px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted">Item</div>
+            <div style={{ width: LABEL_W }} className="sticky left-0 z-20 shrink-0 border-r border-line bg-surface px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted"><T>{"Item"}</T></div>
             <div style={{ width }} className="relative shrink-0">
               {months.map((m) => <div key={m} style={{ left: x(m) }} className="absolute top-0 h-full border-l border-line pl-1.5 pt-1 text-xs font-medium">{fmt(m, { month: "short", year: "numeric" })}</div>)}
               {ticks.map((t) => <div key={t} style={{ left: x(t), width: zoom === "week" ? px : undefined }} className="absolute bottom-1 text-center text-[10px] text-muted">{new Date(t * DAY).getUTCDate()}</div>)}
             </div>
-            <div style={{ width: VAR_W }} className="shrink-0 px-2 py-2 text-xs font-medium uppercase tracking-wide text-muted">Variance</div>
+            <div style={{ width: VAR_W }} className="shrink-0 px-2 py-2 text-xs font-medium uppercase tracking-wide text-muted"><T>{"Variance"}</T></div>
           </div>
 
           {/* Milestones row */}
           {projectId && (
             <div className="relative flex border-b border-line bg-[var(--neutral-bg)]/40" style={{ height: MS_ROW }}>
-              <div style={{ width: LABEL_W }} className="sticky left-0 z-[5] flex shrink-0 items-center border-r border-line bg-surface px-4 text-xs font-medium uppercase tracking-wide text-muted">Milestones</div>
+              <div style={{ width: LABEL_W }} className="sticky left-0 z-[5] flex shrink-0 items-center border-r border-line bg-surface px-4 text-xs font-medium uppercase tracking-wide text-muted"><T>{"Milestones"}</T></div>
               <div style={{ width }} className="relative shrink-0">
                 {milestones.map((m) => {
                   const d = toDay(m.planned_date) + (drag?.mode === "ms" && drag.id === m.id ? Math.round(drag.dx / px) : 0);
@@ -225,7 +230,7 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
                   const missed = !m.actual_date && today > d;
                   return (
                     <div key={m.id} style={{ left: x(d) + px / 2 - 7, top: 6 }} className="absolute flex items-center gap-1.5 whitespace-nowrap"
-                      title={`${m.name}: ${short(d)}${m.actual_date ? ` (achieved ${short(toDay(m.actual_date))})` : ""}`}>
+                      title={`${m.name}: ${short(d)}${m.actual_date ? ` (${t("achieved")} ${short(toDay(m.actual_date))})` : ""}`}>
                       <span onPointerDown={(e) => onMsDown(e, m)}
                         onDoubleClick={() => editable && setMsForm({ id: m.id, name: m.name, date: m.planned_date, actual: m.actual_date ?? "" })}
                         className={`inline-block h-3.5 w-3.5 rotate-45 border-2 ${editable ? "cursor-grab" : ""}`}
@@ -265,7 +270,7 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
                   <div style={{ width }} className="relative shrink-0" data-row={r.id} data-kind={r.kind}>
                     {p && (
                       <div data-row={r.id} data-kind={r.kind}
-                        title={`Planned ${short(p.s)} – ${short(p.e)} (${p.e - p.s + 1} days)${fl !== undefined && !sched.cycle ? ` · float ${fl} days` : ""}`}
+                        title={`${t("Planned")} ${short(p.s)} – ${short(p.e)} (${t("{n} days", { n: p.e - p.s + 1 })})${fl !== undefined && !sched.cycle ? ` · ${t("float {n} days", { n: fl })}` : ""}`}
                         style={{ left: x(p.s), width: Math.max((p.e - p.s + 1) * px, 6), top: 8,
                           borderColor: crit ? "var(--bad)" : "var(--muted)", borderWidth: crit ? 2 : 1 }}
                         onPointerDown={(e) => onBarDown(e, r, "move")}
@@ -276,7 +281,7 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
                             <span onPointerDown={(e) => onBarDown(e, r, "start")} className="absolute -left-1 top-0 h-full w-2 cursor-ew-resize" />
                             <span onPointerDown={(e) => onBarDown(e, r, "end")} className="absolute -right-1 top-0 h-full w-2 cursor-ew-resize" />
                             {r.kind === "wi" && (
-                              <span onPointerDown={(e) => onLinkDown(e, r)} title="Drag onto another work item to make it follow this one"
+                              <span onPointerDown={(e) => onLinkDown(e, r)} title={t("Drag onto another work item to make it follow this one")}
                                 className="absolute -right-4 top-1/2 hidden h-2.5 w-2.5 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[var(--brand)] bg-surface group-hover:block" />
                             )}
                           </>
@@ -284,16 +289,16 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
                       </div>
                     )}
                     {as !== null && ae !== null && (
-                      <div title={`Actual ${short(as)} – ${r.done ? short(ae) : "ongoing"}`}
+                      <div title={`${t("Actual")} ${short(as)} – ${r.done ? short(ae) : t("ongoing")}`}
                         style={{ left: x(as), width: Math.max((ae - as + 1) * px, 4), top: 26, background: tone }}
                         className={`pointer-events-none absolute h-[11px] rounded-sm ${r.done ? "" : "gantt-ongoing"}`} />
                     )}
                   </div>
                   <div style={{ width: VAR_W }} className="flex shrink-0 items-center px-2 text-xs tabular-nums">
-                    {v === null ? <span className="text-muted">{r.done ? "On time" : crit ? "Critical" : "—"}</span>
-                      : v > 0 ? <span className="font-medium text-[var(--bad)]">{v}d late</span>
-                      : v < 0 ? <span className="text-[var(--good)]">{-v}d early</span>
-                      : <span className="text-[var(--good)]">On time</span>}
+                    {v === null ? <span className="text-muted">{r.done ? t("On time") : crit ? t("Critical") : "—"}</span>
+                      : v > 0 ? <span className="font-medium text-[var(--bad)]">{t("{n}d late", { n: v })}</span>
+                      : v < 0 ? <span className="text-[var(--good)]">{t("{n}d early", { n: -v })}</span>
+                      : <span className="text-[var(--good)]"><T>{"On time"}</T></span>}
                   </div>
                 </div>
               );
@@ -345,17 +350,17 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
           <form className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-line p-3 text-sm"
             onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); setSelectedDep(null);
               run(() => addDependency(pred, succ, String(f.get("kind")), Number(f.get("lag")) || 0)); }}>
-            <div className="flex-1"><span className="text-muted">Link:</span> <b>{name(succ)}</b> follows <b>{name(pred)}</b></div>
-            <label className="flex flex-col gap-1"><span className="text-muted">Type</span>
+            <div className="flex-1"><span className="text-muted"><T>{"Link:"}</T></span> <b>{name(succ)}</b> <T>{"follows"}</T> <b>{name(pred)}</b></div>
+            <label className="flex flex-col gap-1"><span className="text-muted"><T>{"Type"}</T></span>
               <select name="kind" defaultValue={d.kind} className="input w-48">
-                <option value="FS">Finish → Start</option><option value="SS">Start → Start</option>
-                <option value="FF">Finish → Finish</option><option value="SF">Start → Finish</option>
+                <TOption value="FS" label="Finish → Start" /><TOption value="SS" label="Start → Start" />
+                <TOption value="FF" label="Finish → Finish" /><TOption value="SF" label="Start → Finish" />
               </select></label>
-            <label className="flex flex-col gap-1"><span className="text-muted">Lag (days)</span>
+            <label className="flex flex-col gap-1"><span className="text-muted"><T>{"Lag (days)"}</T></span>
               <input name="lag" type="number" defaultValue={d.lag} className="input w-24" /></label>
-            <button className="btn btn-sm btn-primary">Save</button>
-            <button type="button" className="btn btn-sm" onClick={() => { setSelectedDep(null); run(() => removeDependency(pred, succ)); }}>Remove link</button>
-            <button type="button" className="btn btn-sm" onClick={() => setSelectedDep(null)}>Close</button>
+            <button className="btn btn-sm btn-primary"><T>{"Save"}</T></button>
+            <button type="button" className="btn btn-sm" onClick={() => { setSelectedDep(null); run(() => removeDependency(pred, succ)); }}><T>{"Remove link"}</T></button>
+            <button type="button" className="btn btn-sm" onClick={() => setSelectedDep(null)}><T>{"Close"}</T></button>
           </form>
         );
       })()}
@@ -366,13 +371,13 @@ export function GanttEditor({ rows, deps, milestones, zoom, editable, projectId 
 export function GanttLegend() {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
-      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm border border-[var(--muted)] bg-[var(--neutral-bg)]" />Planned (shaded = % complete)</span>
-      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm border-2 border-[var(--bad)] bg-[var(--neutral-bg)]" />Critical path</span>
-      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm bg-[var(--good)]" />Actual, on time</span>
-      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm bg-[var(--info)]" />Actual, in progress</span>
-      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm bg-[var(--bad)]" />Running late</span>
-      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rotate-45 border-2 border-[var(--brand)]" />Milestone</span>
-      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-0.5 bg-[var(--bad)]" />Today</span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm border border-[var(--muted)] bg-[var(--neutral-bg)]" /><T>{"Planned (shaded = % complete)"}</T></span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm border-2 border-[var(--bad)] bg-[var(--neutral-bg)]" /><T>{"Critical path"}</T></span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm bg-[var(--good)]" /><T>{"Actual, on time"}</T></span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm bg-[var(--info)]" /><T>{"Actual, in progress"}</T></span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-6 rounded-sm bg-[var(--bad)]" /><T>{"Running late"}</T></span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rotate-45 border-2 border-[var(--brand)]" /><T>{"Milestone"}</T></span>
+      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-0.5 bg-[var(--bad)]" /><T>{"Today"}</T></span>
     </div>
   );
 }

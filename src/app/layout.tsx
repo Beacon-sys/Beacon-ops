@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { LABELS, INTERNAL, type Role } from "@/lib/data";
 import { signOut } from "./login/actions";
 import { Sidebar } from "@/components/sidebar";
+import { LangProvider } from "@/components/i18n";
+import { LanguageSwitch } from "@/components/language-switch";
+import { dirOf, makeT } from "@/lib/i18n";
+import { getLang } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: "Beacon Operations",
@@ -69,6 +73,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const me = user
     ? (await supabase.from("people").select("name,role").eq("user_id", user.id).maybeSingle()).data
     : null;
+  // Kept in a cookie by the middleware from the person's profile (people.language).
+  const lang = await getLang();
+  const t = makeT(lang);
   const role = me?.role as Role | undefined;
   // Projects listed under "All projects" / "My projects" (row-level security limits what each person sees).
   const projects = role
@@ -79,31 +86,37 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     : undefined;
 
   return (
-    <html lang="en">
+    <html lang={lang} dir={dirOf(lang)}>
       <body className="min-h-screen antialiased">
+        <LangProvider lang={lang}>
         {user ? (
           <>
             <Suspense>
             <Sidebar
               items={role ? NAV.filter((n) => n.roles.includes(role)).map(({ href, label, icon, group, children }) => ({
-                href, label, icon, group,
+                href, label: t(label), icon, group: group && t(group),
                 children: href === "/projects" || href === "/"
-                  ? projects.map((p) => ({ href: `/projects/${p.id}`, label: p.name, children: projectPages(p.id, INTERNAL.includes(role)) }))
-                  : children?.filter((c) => !c.roles || c.roles.includes(role)).map(({ href, label }) => ({ href, label })),
+                  ? projects.map((p) => ({ href: `/projects/${p.id}`, label: p.name,
+                      children: projectPages(p.id, INTERNAL.includes(role)).map((x) => ({ ...x, label: t(x.label) })) }))
+                  : children?.filter((c) => !c.roles || c.roles.includes(role)).map(({ href, label }) => ({ href, label: t(label) })),
               })) : []}
               name={me?.name ?? user.email ?? ""}
-              roleLabel={role ? LABELS.role[role] : ""}
+              roleLabel={role ? t(LABELS.role[role]) : ""}
               signOut={signOut}
               pages={pages}
             />
             </Suspense>
-            <main className="px-4 py-8 md:ml-60 md:px-8">
+            <main className="px-4 py-8 md:ms-60 md:px-8">
               <div className="mx-auto max-w-6xl has-[.full-bleed]:max-w-none">{children}</div>
             </main>
           </>
         ) : (
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+          <main className="mx-auto max-w-6xl px-4 py-8">
+            <div className="flex justify-end"><LanguageSwitch className="w-44" /></div>
+            {children}
+          </main>
         )}
+        </LangProvider>
       </body>
     </html>
   );

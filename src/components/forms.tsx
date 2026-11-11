@@ -1,13 +1,16 @@
 import { saveWorkItem, createPurchase, createSiteTask } from "@/app/actions";
+import { T } from "@/components/i18n";
+import { getT } from "@/lib/i18n/server";
 import { Field, Select, PersonSelect } from "@/components/ui";
 
 type Person = { id: string; name: string; role: string };
 type Opt = { id: string; name: string };
 
-export function WorkItemForm({ projectId, item, people, categories = [], vendors = [], team = [], canCost, canPrice, back }: {
+export async function WorkItemForm({ projectId, item, people, categories = [], vendors = [], team = [], canCost, canPrice, back }: {
   projectId: string; item?: Record<string, unknown>; people: Person[]; categories?: string[];
   vendors?: Opt[]; team?: string[]; canCost: boolean; canPrice: boolean; back?: string;
 }) {
+  const t = await getT();
   const v = (k: string) => (item?.[k] ?? "") as string;
   const staff = people.filter((p) => ["management", "site_ops", "tendering", "procurement"].includes(p.role));
   const listId = `cats-${projectId}`;
@@ -19,13 +22,13 @@ export function WorkItemForm({ projectId, item, people, categories = [], vendors
       <Field label="BOQ No."><input name="boq_ref" defaultValue={v("boq_ref")} className="input" /></Field>
       <Field label="Type"><Select name="item_type" set="item_type" defaultValue={v("item_type") || "boq"} /></Field>
       <Field label="Category">
-        <input name="category" list={listId} defaultValue={v("category")} placeholder="e.g. Substructure" className="input" />
+        <input name="category" list={listId} defaultValue={v("category")} placeholder={t("e.g. Substructure")} className="input" />
         <datalist id={listId}>{categories.map((c) => <option key={c} value={c} />)}</datalist>
       </Field>
       <Field label="Trade"><Select name="trade" set="trade" blank defaultValue={v("trade")} /></Field>
       <div className="sm:col-span-4"><Field label="Item description"><textarea name="name" required rows={2} defaultValue={v("name")} className="input" /></Field></div>
       <Field label="Quantity"><input name="quantity" type="number" step="0.01" defaultValue={v("quantity")} className="input" /></Field>
-      <Field label="Unit"><input name="unit" placeholder="m³, m², nr…" defaultValue={v("unit")} className="input" /></Field>
+      <Field label="Unit"><input name="unit" placeholder={t("m³, m², nr…")} defaultValue={v("unit")} className="input" /></Field>
       {canCost ? (
         <>
           <Field label="Cost rate (EGP)"><input name="cost_rate" type="number" step="0.01" defaultValue={v("cost_rate")} className="input" /></Field>
@@ -51,22 +54,22 @@ export function WorkItemForm({ projectId, item, people, categories = [], vendors
       <Field label="Actual start"><input name="actual_start" type="date" defaultValue={v("actual_start")} className="input" /></Field>
       <Field label="Actual finish"><input name="actual_finish" type="date" defaultValue={v("actual_finish")} className="input" /></Field>
       <div className="sm:col-span-4">
-        <span className="text-sm text-muted">Team members assigned</span>
+        <span className="text-sm text-muted"><T>{"Team members assigned"}</T></span>
         <input type="hidden" name="team_submitted" value="1" />
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           {staff.length ? staff.map((p) => (
             <label key={p.id} className="flex items-center gap-1.5 text-sm">
               <input type="checkbox" name="team" value={p.id} defaultChecked={team.includes(p.id)} />{p.name}
             </label>
-          )) : <span className="text-sm text-muted">Add staff on the People page first.</span>}
+          )) : <span className="text-sm text-muted"><T>{"Add staff on the People page first."}</T></span>}
         </div>
       </div>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} defaultValue={v("notes")} className="input" /></Field></div>
       <label className="flex items-center gap-2 self-end pb-2 text-sm">
         <input type="checkbox" name="visible_to_client" defaultChecked={item ? Boolean(item.visible_to_client) : true} />
-        Visible to client
+        <T>{"Visible to client"}</T>
       </label>
-      <div className="sm:col-span-4"><button className="btn btn-primary">{item ? "Save work item" : "Add work item"}</button></div>
+      <div className="sm:col-span-4"><button className="btn btn-primary">{t(item ? "Save work item" : "Add work item")}</button></div>
     </form>
   );
 }
@@ -92,7 +95,7 @@ export function PurchaseRequestForm({ projects, workItems, suppliers, projectId,
       <Field label="Unit"><input name="unit" className="input" /></Field>
       <Field label="Preferred vendor"><PersonSelect name="supplier_id" people={suppliers} /></Field>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} className="input" /></Field></div>
-      <div className="sm:col-span-3"><button className="btn btn-primary">Submit request</button></div>
+      <div className="sm:col-span-3"><button className="btn btn-primary"><T>{"Submit request"}</T></button></div>
     </form>
   );
 }
@@ -119,7 +122,7 @@ export function SiteTaskForm({ projects, workItems, people, projectId, back }: {
       <Field label="Due"><input name="due" type="date" className="input" /></Field>
       <Field label="Priority"><Select name="priority" set="priority" defaultValue="medium" /></Field>
       <div className="sm:col-span-3"><Field label="Notes"><textarea name="notes" rows={2} className="input" /></Field></div>
-      <div className="sm:col-span-3"><button className="btn btn-primary">Add task</button></div>
+      <div className="sm:col-span-3"><button className="btn btn-primary"><T>{"Add task"}</T></button></div>
     </form>
   );
 }

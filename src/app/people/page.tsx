@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { getT } from "@/lib/i18n/server";
+import { T, TOption } from "@/components/i18n";
 import { requireMe } from "@/lib/data";
 import { Database, type Row } from "@/components/database";
 import { peopleColumns } from "@/lib/db-columns";
@@ -11,9 +13,10 @@ export default async function People({ searchParams }: { searchParams: Promise<{
   if (me.role === "procurement") redirect("/procurement/vendors");
   if (!["management", "tendering"].includes(me.role)) redirect("/");
   const { error } = await searchParams;
+  const t = await getT();
   const { data: people = [] } = await supabase.from("people").select("*").order("role").order("name");
   const mgmt = me.role === "management";
-  const dbRows = (people ?? []).map((p) => ({ ...p, login: p.user_id ? "Signed up" : p.email ? "Not yet" : "" })) as Row[];
+  const dbRows = (people ?? []).map((p) => ({ ...p, login: p.user_id ? t("Signed up") : p.email ? t("Not yet") : "" })) as Row[];
 
   return (
     <>
@@ -22,7 +25,7 @@ export default async function People({ searchParams }: { searchParams: Promise<{
       <Card>
         <Database id="people" table="people" rows={dbRows} columns={peopleColumns(mgmt)} titleKey="name" editable
           createDefaults={{ role: mgmt ? "client" : "client" }} creatable={mgmt} initial={{ group: "role" }} views={["table", "board", "list"]} />
-        {mgmt && <p className="mt-2 text-xs text-muted">New rows start as Client; change the Role cell to set what they can see. People sign in with the email listed here.</p>}
+        {mgmt && <p className="mt-2 text-xs text-muted">{t("New rows start as Client; change the Role cell to set what they can see. People sign in with the email listed here.")}</p>}
       </Card>
       <Card title={mgmt ? "Add a person" : me.role === "tendering" ? "Add a client or consultant" : "Add a supplier"}><PersonForm mgmt={mgmt} tendering={me.role === "tendering"} /></Card>
     </>
@@ -40,17 +43,16 @@ function PersonForm({ person, mgmt, tendering }: { person?: Record<string, strin
       <Field label="Phone"><input name="phone" defaultValue={v("phone")} className="input" /></Field>
       {mgmt
         ? <Field label="Role"><Select name="role" set="role" defaultValue={v("role") || "site_ops"} /></Field>
-        : tendering
-          ? <Field label="Role"><select name="role" defaultValue="client" className="input"><option value="client">Client</option><option value="consultant">Consultant</option></select></Field>
+        : tendering ? <Field label="Role"><select name="role" defaultValue="client" className="input"><TOption value="client" label="Client" /><TOption value="consultant" label="Consultant" /></select></Field>
           : <input type="hidden" name="role" value="supplier" />}
       {person && (
         <Field label="Active">
           <select name="active" defaultValue={person.active ? "on" : "off"} className="input">
-            <option value="on">Active</option><option value="off">Inactive</option>
+            <TOption value="on" label="Active" /><TOption value="off" label="Inactive" />
           </select>
         </Field>
       )}
-      <div className="sm:col-span-2"><button className="btn btn-primary">{person ? "Save" : "Add"}</button></div>
+      <div className="sm:col-span-2"><button className="btn btn-primary"><T>{person ? "Save" : "Add"}</T></button></div>
     </form>
   );
 }

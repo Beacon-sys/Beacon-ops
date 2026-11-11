@@ -1,9 +1,12 @@
 import { saveProject } from "@/app/actions";
+import { TOption } from "@/components/i18n";
+import { getT } from "@/lib/i18n/server";
 import { Field, Select, PersonSelect } from "@/components/ui";
 
 type P = { id: string; name: string; role: string };
 
-export function ProjectForm({ project, people, tendering }: { project?: Record<string, string | number | null>; people: P[]; tendering?: boolean }) {
+export async function ProjectForm({ project, people, tendering }: { project?: Record<string, string | number | null>; people: P[]; tendering?: boolean }) {
+  const t = await getT();
   const v = (k: string) => (project?.[k] ?? "") as string;
   const of = (...roles: string[]) => people.filter((p) => roles.includes(p.role));
   return (
@@ -18,15 +21,15 @@ export function ProjectForm({ project, people, tendering }: { project?: Record<s
       <Field label="Status">
         {tendering ? (
           <select name="status" defaultValue={v("status") || "tendering"} className="input">
-            <option value="tendering">Tendering</option>
-            {project && <option value="active">Won: hand over to Operations</option>}
+            <TOption value="tendering" label="Tendering" />
+            {project && <TOption value="active" label="Won: hand over to Operations" />}
           </select>
         ) : <Select name="status" set="project_status" defaultValue={v("status") || "tendering"} />}
       </Field>
       <Field label="Contract value (EGP)"><input name="contract_value" type="number" step="0.01" defaultValue={v("contract_value")} className="input" /></Field>
       <Field label="Start date"><input name="start_date" type="date" defaultValue={v("start_date")} className="input" /></Field>
       <Field label="Planned finish"><input name="planned_finish" type="date" defaultValue={v("planned_finish")} className="input" /></Field>
-      <div className="sm:col-span-2"><button className="btn btn-primary">{project ? "Save changes" : "Create project"}</button></div>
+      <div className="sm:col-span-2"><button className="btn btn-primary">{t(project ? "Save changes" : "Create project")}</button></div>
     </form>
   );
 }
