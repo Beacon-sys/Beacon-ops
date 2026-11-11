@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { LABELS, INTERNAL, type Role } from "@/lib/data";
 import { signOut } from "./login/actions";
 import { Sidebar } from "@/components/sidebar";
+import { AssistantPanel } from "@/components/assistant-panel";
+import { claudeConfigured } from "@/lib/claude";
 
 export const metadata: Metadata = {
   title: "Beacon Operations",
@@ -100,6 +102,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <main className="px-4 py-8 md:ml-60 md:px-8">
               <div className="mx-auto max-w-6xl has-[.full-bleed]:max-w-none">{children}</div>
             </main>
+            {role && (INTERNAL.includes(role) || role === "client" || role === "consultant") && (
+              <AssistantPanel ready={claudeConfigured()} />
+            )}
           </>
         ) : (
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
